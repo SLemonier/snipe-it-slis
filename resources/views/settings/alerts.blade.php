@@ -128,6 +128,8 @@
                             </legend>
 
 
+                            @include('consumables.stock.settings')
+
                             <!-- Alert interval -->
                             <div class="form-group {{ $errors->has('alert_interval') ? 'error' : '' }}">
                                 <div class="col-md-3">

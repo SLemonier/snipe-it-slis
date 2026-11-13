@@ -324,8 +324,44 @@ class Consumable extends SnipeModel
      * @since [v4.0]
      * @return int
      */
+    public function usesStockLots(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')
+            && ConsumableStockProduct::whereKey($this->id)->exists();
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $item) {
+            if ($item->usesStockLots() && ($item->isDirty('qty') || $item->isDirty('company_id'))) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'qty' => trans('consumable_stock.errors.use_stock'),
+                ]);
+            }
+        });
+        static::deleting(function (self $item) {
+            if ($item->usesStockLots()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'stock' => trans('consumable_stock.errors.delete_tracked'),
+                ]);
+            }
+        });
+    }
+
     public function numRemaining()
     {
+        if ($this->usesStockLots()) {
+            $product = ConsumableStockProduct::find($this->id);
+            return (int) ConsumableStockBalance::whereHas('lot', function ($query) use ($product) {
+                $query->where('consumable_id', $this->id)->where('unidentified', false)->where('quarantined', false)
+                    ->where(function ($date) use ($product) {
+                        $date->whereDate('expires_on', '>=', today());
+                        if (!$product->expiry_required) {
+                            $date->orWhereNull('expires_on');
+                        }
+                    });
+            })->sum('quantity');
+        }
         $checkedout = $this->numCheckedOut();
         $total = $this->qty;
         $remaining = $total - $checkedout;

@@ -307,7 +307,12 @@ class BulkUsersController extends Controller
         ]);
 
         LicenseSeat::whereIn('id', $licenses->pluck('id'))->update(['assigned_to' => null]);
-        ConsumableAssignment::whereIn('id', $consumableUserRows->pluck('id'))->delete();
+        // Historical distributions of opted-in products are an immutable opening reference.
+        $assignmentsToRemove = ConsumableAssignment::whereIn('id', $consumableUserRows->pluck('id'));
+        if (\Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')) {
+            $assignmentsToRemove->whereNotIn('consumable_id', \App\Models\ConsumableStockProduct::select('consumable_id'));
+        }
+        $assignmentsToRemove->delete();
 
         foreach ($users as $user) {
             $user->accessories()->sync([]);

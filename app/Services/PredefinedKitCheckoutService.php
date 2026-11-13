@@ -123,6 +123,10 @@ class PredefinedKitCheckoutService
     {
         $consumables = $kit->consumables()->with('users')->get();
         foreach ($consumables as $consumable) {
+            if ($consumable->usesStockLots()) {
+                $errors[] = $consumable->name.': '.trans('consumable_stock.errors.use_stock');
+                continue;
+            }
             if ($consumable->numRemaining() < $consumable->pivot->quantity) {
                 $errors[] = trans('admin/kits/general.none_consumables', ['consumable'=> $consumable->name, 'qty' => $consumable->pivot->quantity]);
             }

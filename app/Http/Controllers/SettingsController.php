@@ -653,6 +653,13 @@ class SettingsController extends Controller
         $setting->admin_cc_email = $admin_cc_email;
         $setting->admin_cc_always = $request->validated('admin_cc_always');
         $setting->alerts_enabled = $request->input('alerts_enabled', '0');
+        if ($request->has('consumable_stock_enabled')) {
+            $stockSettings = \App\Models\ConsumableStockSetting::firstOrNew(['id' => 1]);
+            $stockSettings->enabled = $request->boolean('consumable_stock_enabled');
+            $stockSettings->expiry_days = $request->input('consumable_expiry_days', $stockSettings->expiry_days ?? 60);
+            $stockSettings->reminder_days = $request->input('consumable_reminder_days', $stockSettings->reminder_days ?? 7);
+            $stockSettings->save();
+        }
         $setting->alert_interval = $request->input('alert_interval');
         $setting->alert_threshold = $request->input('alert_threshold');
         $setting->audit_interval = $request->input('audit_interval');

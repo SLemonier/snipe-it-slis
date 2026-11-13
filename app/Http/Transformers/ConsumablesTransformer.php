@@ -61,6 +61,11 @@ class ConsumablesTransformer
             'delete' => Gate::allows('delete', Consumable::class),
             'clone' => (Gate::allows('create', Consumable::class) && ($consumable->deleted_at == '')),
         ];
+        if ($consumable->usesStockLots()) {
+            $permissions_array['user_can_checkout'] = false;
+            $permissions_array['available_actions']['checkout'] = false;
+            $permissions_array['available_actions']['delete'] = false;
+        }
         $array += $permissions_array;
 
         return $array;

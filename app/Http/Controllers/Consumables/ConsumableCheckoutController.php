@@ -28,6 +28,10 @@ class ConsumableCheckoutController extends Controller
 
             $this->authorize('checkout', $consumable);
 
+            if ($consumable->usesStockLots()) {
+                return redirect()->route('consumables.stock.show', $consumable);
+            }
+
             // Make sure the category is valid
             if ($consumable->category) {
 
@@ -68,6 +72,11 @@ class ConsumableCheckoutController extends Controller
         }
 
         $this->authorize('checkout', $consumable);
+
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
 
         // If the quantity is not present in the request or is not a positive integer, set it to 1
         $quantity = $request->input('checkout_qty');

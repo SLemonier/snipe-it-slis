@@ -1,0 +1,75 @@
+name: Consumable stock on MariaDB
+
+on:
+  push:
+    branches: [feature/consumable-lots-8.1.18]
+  pull_request:
+    branches: [production/8.1.18]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  stock:
+    name: PHP 8.3 / MariaDB ${{ matrix.mariadb }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mariadb: ['10.6', '10.11']
+    services:
+      mariadb:
+        image: mariadb:${{ matrix.mariadb }}
+        env:
+          MARIADB_ROOT_PASSWORD: testing-only
+          MARIADB_DATABASE: snipeit_test
+        ports: [3306/tcp]
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: ${{ job.services.mariadb.ports[3306] }}
+      DB_DATABASE: snipeit_test
+      DB_USERNAME: root
+      DB_PASSWORD: testing-only
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, ldap, zip, bcmath, pdo_mysql
+          coverage: none
+          tools: composer:2.8
+      - name: Install pinned dependencies
+        run: composer install --no-interaction --no-scripts --no-progress --prefer-dist
+      - name: Prepare isolated test application
+        run: |
+          cp .env.testing.example .env
+          cp .env.testing.example .env.testing
+          php artisan key:generate
+          php artisan migrate --force
+          php artisan passport:install --no-interaction
+      - name: Check PHP syntax
+        run: |
+          git diff --name-only --diff-filter=AM 710f89291f414563eccb23d3e4790d64a8b331ea -- '*.php' | while IFS= read -r file; do php -l "$file" || exit 1; done
+      - name: Compile application views
+        run: php artisan view:cache
+      - name: Stock and existing consumable regression tests
+        run: php artisan test tests/Feature/ConsumableStock tests/Feature/Consumables
+
+  docker:
+    name: Build the existing Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build source image without publishing
+        run: docker build --tag snipeit-stock:test .
+      - name: Check module in the image without starting the application
+        run: |
+          docker run --rm --entrypoint php snipeit-stock:test -l app/Services/ConsumableStock.php
+          docker run --rm --entrypoint php snipeit-stock:test -l app/Console/Commands/SendConsumableStockAlerts.php
