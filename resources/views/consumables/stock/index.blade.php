@@ -11,8 +11,16 @@
         <form method="GET" class="form-inline">
             <label for="stock-search">{{ trans('general.search') }}</label>
             <input class="form-control" id="stock-search" name="search" value="{{ request('search') }}">
+            <label for="stock-place">{{ trans('consumable_stock.place') }}</label>
+            <select class="form-control" id="stock-place" name="place_id">
+                <option value="">{{ trans('consumable_stock.all_places') }}</option>
+                @foreach($places as $place)
+                    <option value="{{ $place->id }}" @selected((string) request('place_id') === (string) $place->id)>{{ $place->displayPath() }}</option>
+                @endforeach
+            </select>
             <button class="btn btn-default" type="submit">{{ trans('general.search') }}</button>
         </form>
+        <p class="help-block">{{ trans('consumable_stock.includes_children') }}</p>
         <table class="table table-striped">
             <thead><tr><th>{{ trans('general.name') }}</th><th>{{ trans('consumable_stock.physical') }}</th><th>{{ trans('consumable_stock.usable') }}</th><th>{{ trans('consumable_stock.unavailable') }}</th></tr></thead>
             <tbody>

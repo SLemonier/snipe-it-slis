@@ -278,7 +278,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', 'api-throttle:api']], fu
       Route::group(['prefix' => 'consumables'], function () {
           Route::get('stock/places', [\App\Http\Controllers\Consumables\ConsumableStockController::class, 'places'])->name('api.consumables.stock.places');
           Route::post('stock/places', [\App\Http\Controllers\Consumables\ConsumableStockController::class, 'savePlace'])->name('api.consumables.stock.places.store');
-          Route::put('stock/places/{place}', [\App\Http\Controllers\Consumables\ConsumableStockController::class, 'savePlace'])->name('api.consumables.stock.places.update');
+          Route::put('stock/places/{place}', [\App\Http\Controllers\Consumables\ConsumableStockController::class, 'savePlace'])->missing(fn () => abort(404))->name('api.consumables.stock.places.update');
           Route::get('{consumable}/stock', [\App\Http\Controllers\Consumables\ConsumableStockController::class, 'show'])->name('api.consumables.stock.show');
           Route::post('{consumable}/stock', [\App\Http\Controllers\Consumables\ConsumableStockController::class, 'store'])->name('api.consumables.stock.store');
 

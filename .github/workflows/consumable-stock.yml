@@ -1,8 +1,6 @@
 name: Consumable stock on MariaDB
 
 on:
-  push:
-    branches: [feature/consumable-lots-8.1.18]
   pull_request:
     branches: [production/8.1.18]
   workflow_dispatch:
@@ -42,7 +40,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
-          extensions: gd, ldap, zip, bcmath, pdo_mysql
+          extensions: gd, ldap, zip, bcmath, pdo_mysql, pcntl
           coverage: none
           tools: composer:2.8
       - name: Install pinned dependencies
@@ -55,6 +53,8 @@ jobs:
           php tests/Support/verify-stock-upgrade.php
           php artisan migrate --force
           php artisan passport:install --no-interaction
+      - name: Verify concurrent writes and retries
+        run: php tests/Support/verify-stock-concurrency.php
       - name: Check PHP syntax
         run: |
           git diff --name-only --diff-filter=AM 710f89291f414563eccb23d3e4790d64a8b331ea -- '*.php' | while IFS= read -r file; do php -l "$file" || exit 1; done

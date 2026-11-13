@@ -61,7 +61,9 @@ return [
     'upcoming' => 'Péremption prochaine',
     'expired' => 'Périmé — à retirer',
     'low' => 'Sous le minimum',
-    'settings_changed' => 'Settings updated',
+    'settings_changed' => 'Paramètres enregistrés',
+    'all_places' => 'Tous les emplacements',
+    'includes_children' => 'Le filtre inclut le contenu des sacs rattachés à cet emplacement. Chaque unité est comptée une seule fois.',
     'actions' => [
         'enable' => 'Activer le suivi par lots',
         'receive' => 'Réceptionner',
@@ -80,6 +82,7 @@ return [
         'bag' => 'Sac',
     ],
     'errors' => [
+        'invalid_reference' => 'La référence demandée est introuvable ou inaccessible.',
         'disabled' => 'Le module de stock est désactivé.',
         'duplicate' => 'Cet identifiant d’opération a déjà été utilisé avec des données différentes.',
         'already_enabled' => 'Le suivi par lots est déjà activé.',

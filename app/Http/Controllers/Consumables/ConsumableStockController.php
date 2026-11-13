@@ -24,12 +24,37 @@ class ConsumableStockController extends Controller
         if ($request->filled('search')) {
             $query->where('name', 'like', '%'.$request->input('search').'%');
         }
+        $places = ConsumableStockPlace::with('parent')->orderBy('name')->get();
+        $placeIds = null;
+        if ($request->filled('place_id')) {
+            $selected = $places->firstWhere('id', (int) $request->input('place_id'));
+            abort_unless($selected, 404);
+            $placeIds = [$selected->id];
+            do {
+                $before = count($placeIds);
+                foreach ($places as $place) {
+                    if (in_array($place->parent_id, $placeIds, true) && !in_array($place->id, $placeIds, true)) {
+                        $placeIds[] = $place->id;
+                    }
+                }
+            } while ($before !== count($placeIds));
+            $query->whereIn('id', \Illuminate\Support\Facades\DB::table('consumable_stock_balances as balances')
+                ->join('consumable_stock_lots as lots', 'lots.id', '=', 'balances.lot_id')
+                ->whereIn('balances.place_id', $placeIds)->where('balances.quantity', '>', 0)->select('lots.consumable_id'));
+        }
         $items = $query->paginate(25);
         $summaries = [];
         foreach ($items as $item) {
-            $summaries[$item->id] = $stock->snapshot($item);
+            $summary = $stock->snapshot($item);
+            if ($placeIds !== null) {
+                $balances = collect($summary['balances'])->whereIn('place_id', $placeIds);
+                $summary['physical'] = $balances->sum('quantity');
+                $summary['usable'] = $balances->where('usable', true)->sum('quantity');
+                $summary['unavailable'] = $summary['physical'] - $summary['usable'];
+            }
+            $summaries[$item->id] = $summary;
         }
-        return view('consumables.stock.index', compact('items', 'summaries'));
+        return view('consumables.stock.index', compact('items', 'summaries', 'places'));
     }
 
     public function show(Consumable $consumable, ConsumableStock $stock, Request $request)

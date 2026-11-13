@@ -9,7 +9,7 @@ Route::group(['prefix' => 'consumables', 'middleware' => ['auth']], function () 
     Route::get('stock', [Consumables\ConsumableStockController::class, 'index'])->name('consumables.stock.index');
     Route::get('stock/places', [Consumables\ConsumableStockController::class, 'places'])->name('consumables.stock.places');
     Route::post('stock/places', [Consumables\ConsumableStockController::class, 'savePlace'])->name('consumables.stock.places.store');
-    Route::put('stock/places/{place}', [Consumables\ConsumableStockController::class, 'savePlace'])->name('consumables.stock.places.update');
+    Route::put('stock/places/{place}', [Consumables\ConsumableStockController::class, 'savePlace'])->missing(fn () => abort(404))->name('consumables.stock.places.update');
     Route::get('{consumable}/stock', [Consumables\ConsumableStockController::class, 'show'])->name('consumables.stock.show');
     Route::post('{consumable}/stock', [Consumables\ConsumableStockController::class, 'store'])->name('consumables.stock.store');
 

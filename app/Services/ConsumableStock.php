@@ -191,7 +191,8 @@ class ConsumableStock
             if ($place->exists) {
                 $this->check($place->company_id === $company, 'place_company');
             }
-            $parent = !empty($data['parent_id']) ? Place::findOrFail($data['parent_id']) : null;
+            $parent = !empty($data['parent_id']) ? Place::find($data['parent_id']) : null;
+            $this->check(empty($data['parent_id']) || $parent !== null, 'invalid_reference');
             $cursor = $parent;
             while ($cursor) {
                 $this->check(!$place->exists || $cursor->id !== $place->id, 'cycle');
@@ -266,7 +267,8 @@ class ConsumableStock
 
     private function place(Consumable $item, int $id): Place
     {
-        $place = Place::findOrFail($id);
+        $place = Place::find($id);
+        $this->check($place !== null, 'invalid_reference');
         $this->check(Company::isCurrentUserHasAccess($place)
             && ($place->company_id === ($item->company_id === null ? null : (int) $item->company_id)), 'company');
         return $place;
@@ -274,7 +276,9 @@ class ConsumableStock
 
     private function lot(Consumable $item, int $id): Lot
     {
-        return Lot::where('consumable_id', $item->id)->findOrFail($id);
+        $lot = Lot::where('consumable_id', $item->id)->find($id);
+        $this->check($lot !== null, 'invalid_reference');
+        return $lot;
     }
 
     private function resolveLot(Consumable $item, Product $product, array $data): Lot

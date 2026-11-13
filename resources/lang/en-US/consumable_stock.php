@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'all_places' => 'All locations',
+    'includes_children' => 'The filter includes bags inside this location. Each unit is counted once.',
     'title' => 'Consumable lots and stock',
     'places' => 'Stock locations',
     'place' => 'Location',
@@ -80,6 +82,7 @@ return [
         'bag' => 'Bag',
     ],
     'errors' => [
+        'invalid_reference' => 'The requested reference does not exist or is not accessible.',
         'disabled' => 'The stock module is disabled.',
         'duplicate' => 'This operation identifier has already been used with different data.',
         'already_enabled' => 'Lot tracking is already enabled.',

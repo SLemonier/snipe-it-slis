@@ -10,7 +10,7 @@
             <thead><tr><th>{{ trans('general.name') }}</th><th>{{ trans('consumable_stock.kind') }}</th><th>{{ trans('consumable_stock.parent') }}</th><th></th></tr></thead>
             <tbody>
             @foreach($places as $place)
-                <tr><td>{{ $place->displayPath() }}</td><td>{{ trans('consumable_stock.kinds.'.$place->kind) }}</td><td>{{ $place->parent?->name }}</td>
+                <tr><td><a href="{{ route('consumables.stock.index', ['place_id' => $place->id]) }}">{{ $place->displayPath() }}</a></td><td>{{ trans('consumable_stock.kinds.'.$place->kind) }}</td><td>{{ $place->parent?->name }}</td>
                     <td>@can('superuser')<a class="btn btn-default btn-sm" data-toggle="collapse" href="#place-{{ $place->id }}">{{ trans('general.edit') }}</a>@endcan</td>
                 </tr>
                 @can('superuser')

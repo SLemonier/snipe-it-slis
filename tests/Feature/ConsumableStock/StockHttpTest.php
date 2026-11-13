@@ -44,6 +44,20 @@ class StockHttpTest extends TestCase
         $this->get(route('settings.alerts.index'))->assertOk();
     }
 
+    public function test_vehicle_filter_includes_nested_bags_once(): void
+    {
+        $this->actingAs($this->admin);
+        $this->post(route('consumables.stock.store', $this->item), $this->activation())->assertSessionHasNoErrors();
+        $bag = Place::create(['name' => 'Nested bag', 'kind' => 'bag', 'parent_id' => $this->place->id]);
+        $stock = app(\App\Services\ConsumableStock::class);
+        $stock->execute($this->item, ['action' => 'receive', 'operation_id' => (string) Str::uuid(),
+            'note' => 'New stock in bag', 'number' => 'B', 'expires_on' => '2099-01-01', 'quantity' => 3, 'to_place_id' => $bag->id]);
+        $this->get(route('consumables.stock.index', ['place_id' => $this->place->id]))
+            ->assertOk()->assertViewHas('summaries', fn ($rows) => $rows[$this->item->id]['physical'] === 8);
+        $this->get(route('consumables.stock.index', ['place_id' => $bag->id]))
+            ->assertOk()->assertViewHas('summaries', fn ($rows) => $rows[$this->item->id]['physical'] === 3);
+    }
+
     public function test_api_exposes_only_authorized_stock_and_rejects_old_checkout_for_active_product(): void
     {
         $this->actingAsForApi($this->admin);
@@ -77,10 +91,10 @@ class StockHttpTest extends TestCase
         $this->place->save();
         $user = User::factory()->viewConsumables()->editConsumables()->for($a)->create();
         $this->actingAsForApi($user);
-        $this->postJson(route('api.consumables.stock.store', $this->item), $this->activation())->assertNotFound();
+        $this->postJson(route('api.consumables.stock.store', $this->item), $this->activation())->assertOk()->assertJsonPath('status', 'error')->assertJsonPath('payload', null);
         $this->assertDatabaseCount('consumable_stock_products', 0);
         $this->actingAsForApi(User::factory()->viewConsumables()->editConsumables()->for($b)->create());
-        $this->getJson(route('api.consumables.stock.show', $this->item))->assertNotFound();
+        $this->getJson(route('api.consumables.stock.show', $this->item))->assertOk()->assertJsonPath('status', 'error')->assertJsonPath('payload', null);
     }
 
     public function test_validation_rejects_negative_receipts_and_missing_expiry_without_partial_writes(): void
@@ -90,10 +104,10 @@ class StockHttpTest extends TestCase
         $request = ['action' => 'receive', 'operation_id' => (string) Str::uuid(), 'note' => 'Delivery',
             'quantity' => -2, 'number' => 'A', 'to_place_id' => $this->place->id];
         $this->postJson(route('api.consumables.stock.store', $this->item), $request)
-            ->assertUnprocessable()->assertJsonValidationErrors('quantity');
+            ->assertOk()->assertJsonPath('status', 'error')->assertJsonStructure(['messages' => ['quantity']]);
         $request['quantity'] = 2;
         $this->postJson(route('api.consumables.stock.store', $this->item), $request)
-            ->assertUnprocessable()->assertJsonValidationErrors('stock');
+            ->assertOk()->assertJsonPath('status', 'error')->assertJsonStructure(['messages' => ['stock']]);
         $this->assertEquals(5, $this->item->fresh()->qty);
         $this->assertDatabaseCount('consumable_stock_operations', 1);
     }
