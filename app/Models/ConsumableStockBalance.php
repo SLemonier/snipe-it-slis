@@ -15,11 +15,13 @@ class ConsumableStockBalance extends Model
 
     protected $casts = ['quantity' => 'integer'];
 
+    /** @return BelongsTo<ConsumableStockLot, $this> */
     public function lot(): BelongsTo
     {
         return $this->belongsTo(ConsumableStockLot::class, 'lot_id');
     }
 
+    /** @return BelongsTo<ConsumableStockPlace, $this> */
     public function place(): BelongsTo
     {
         return $this->belongsTo(ConsumableStockPlace::class, 'place_id');

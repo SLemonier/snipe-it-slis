@@ -20,11 +20,13 @@ class ConsumableStockOperation extends Model
 
     protected $casts = ['details' => 'array', 'created_at' => 'datetime'];
 
+    /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'actor_id')->withTrashed();
     }
 
+    /** @return HasMany<ConsumableStockMovement, $this> */
     public function movements(): HasMany
     {
         return $this->hasMany(ConsumableStockMovement::class, 'operation_id');

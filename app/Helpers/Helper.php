@@ -927,12 +927,28 @@ class Helper
             ->whereRaw('(qty - consumed_count) < (min_amt + ?)', [$alert_threshold])
             ->get();
 
-        // Tracked quantities include reserves, vehicles and bags; only usable
-        // units count. Historical user distributions are never counted twice.
-        if ($hasLotStock && \App\Models\ConsumableStockSetting::current()->enabled) {
-            $tracked = Consumable::whereIn('id', \App\Models\ConsumableStockProduct::select('consumable_id'))
-                ->whereNotNull('min_amt')->notArchived()->get()
-                ->filter(fn ($item) => $item->numRemaining() < $item->min_amt + $alert_threshold);
+        // Aggregate all usable balances in one query, including vehicle and bag
+        // stock. Avoid per-product queries in the global low-inventory widget.
+        if ($hasLotStock && \App\Models\ConsumableStockSetting::find(1)?->enabled) {
+            $usable = DB::table('consumable_stock_lots as stock_lots')
+                ->join('consumable_stock_products as stock_products', 'stock_products.consumable_id', '=', 'stock_lots.consumable_id')
+                ->join('consumable_stock_balances as stock_balances', 'stock_balances.lot_id', '=', 'stock_lots.id')
+                ->where('stock_lots.unidentified', false)->where('stock_lots.quarantined', false)
+                ->where(function ($query) {
+                    $query->whereDate('stock_lots.expires_on', '>=', today())
+                        ->orWhere(fn ($undated) => $undated->whereNull('stock_lots.expires_on')
+                            ->where('stock_products.expiry_required', false));
+                })
+                ->select('stock_lots.consumable_id')
+                ->selectRaw('SUM(stock_balances.quantity) as usable')
+                ->groupBy('stock_lots.consumable_id');
+            $tracked = Consumable::query()->select('consumables.*')
+                ->selectRaw('COALESCE(stock_totals.usable, 0) as stock_usable')
+                ->leftJoinSub($usable, 'stock_totals', fn ($join) => $join->on('stock_totals.consumable_id', '=', 'consumables.id'))
+                ->whereIn('consumables.id', \App\Models\ConsumableStockProduct::select('consumable_id'))
+                ->whereNotNull('min_amt')->notArchived()
+                ->whereRaw('COALESCE(stock_totals.usable, 0) < (consumables.min_amt + ?)', [$alert_threshold])
+                ->get();
             $consumables = $consumables->merge($tracked);
         }
 
@@ -1003,7 +1019,9 @@ class Helper
         $all_count = 0;
 
         foreach ($consumables as $consumable) {
-            $avail = $consumable->usesStockLots() ? $consumable->numRemaining() : $consumable->qty - $consumable->consumables_users_count;
+            $avail = $consumable->getAttribute('stock_usable') !== null
+                ? (int) $consumable->getAttribute('stock_usable')
+                : $consumable->qty - $consumable->consumables_users_count;
             $percent = $consumable->qty > 0
                 ? number_format((($avail / $consumable->qty) * 100), 0)
                 : 100;

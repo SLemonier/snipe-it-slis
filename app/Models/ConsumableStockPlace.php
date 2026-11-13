@@ -16,6 +16,7 @@ class ConsumableStockPlace extends Model
 
     protected $casts = ['company_id' => 'integer', 'parent_id' => 'integer'];
 
+    /** @return BelongsTo<ConsumableStockPlace, $this> */
     public function parent(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_id');

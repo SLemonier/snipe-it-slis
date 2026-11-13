@@ -14,11 +14,13 @@ class ConsumableStockLot extends Model
 
     protected $casts = ['expires_on' => 'date', 'quarantined' => 'boolean', 'unidentified' => 'boolean'];
 
+    /** @return BelongsTo<Consumable, $this> */
     public function consumable(): BelongsTo
     {
         return $this->belongsTo(Consumable::class);
     }
 
+    /** @return HasMany<ConsumableStockBalance, $this> */
     public function balances(): HasMany
     {
         return $this->hasMany(ConsumableStockBalance::class, 'lot_id');

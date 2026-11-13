@@ -13,6 +13,7 @@ class ConsumableStockMovement extends Model
 
     public $timestamps = false;
 
+    /** @return BelongsTo<ConsumableStockLot, $this> */
     public function lot(): BelongsTo
     {
         return $this->belongsTo(ConsumableStockLot::class, 'lot_id');

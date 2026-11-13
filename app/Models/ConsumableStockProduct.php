@@ -17,6 +17,7 @@ class ConsumableStockProduct extends Model
 
     protected $casts = ['expiry_required' => 'boolean', 'opening_assignments' => 'integer', 'expected_qty' => 'integer'];
 
+    /** @return BelongsTo<Consumable, $this> */
     public function consumable(): BelongsTo
     {
         return $this->belongsTo(Consumable::class);
