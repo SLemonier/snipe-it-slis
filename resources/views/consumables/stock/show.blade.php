@@ -141,8 +141,22 @@
                             → {{ $places->firstWhere('id', $movement->to_place_id)?->name }}
                         </div>
                     @endforeach
-                    @if(in_array($operation->action, ['amend_lot','quarantine','minimum']))
-                        <pre>{{ json_encode($operation->details, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
+                    @if($operation->action === 'amend_lot')
+                        <div>{{ trans('consumable_stock.lot') }}: {{ $operation->details['previous_number'] }} → {{ $operation->details['number'] }}</div>
+                        <div>{{ trans('consumable_stock.expiry') }}: {{ $operation->details['previous_expires_on'] ?? trans('consumable_stock.no_expiry') }} → {{ $operation->details['expires_on'] ?? trans('consumable_stock.no_expiry') }}</div>
+                    @elseif($operation->action === 'quarantine')
+                        <div>{{ trans('consumable_stock.quarantined') }}:
+                            {{ trans('general.'.($operation->details['previous_quarantined'] ? 'yes' : 'no')) }}
+                            → {{ trans('general.'.($operation->details['quarantined'] ? 'yes' : 'no')) }}</div>
+                    @elseif($operation->action === 'minimum')
+                        <div>{{ $places->firstWhere('id', $operation->details['to_place_id'])?->name }}:
+                            {{ trans('consumable_stock.minimum') }} {{ $operation->details['quantity'] }} {{ $snapshot['unit'] }}</div>
+                    @endif
+                    @if(!empty($operation->details['reference']))
+                        <div>{{ trans('consumable_stock.reference') }}: {{ $operation->details['reference'] }}</div>
+                    @endif
+                    @if(!empty($operation->details['received_on']))
+                        <div>{{ trans('consumable_stock.received') }}: {{ $operation->details['received_on'] }}</div>
                     @endif</td>
                 </tr>
             @endforeach</tbody>

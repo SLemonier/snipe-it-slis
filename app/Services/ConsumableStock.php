@@ -61,7 +61,7 @@ class ConsumableStock
                 $this->check($qty >= $assigned, 'legacy_changed');
                 $product = Product::create([
                     'consumable_id' => $locked->id, 'unit' => $data['unit'],
-                    'expiry_required' => $data['expiry_required'] ?? false,
+                    'expiry_required' => $data['expiry_required'] ?? true,
                     'opening_qty' => $qty, 'opening_assignments' => $assigned,
                     'expected_qty' => $qty, 'enabled_by' => auth()->id(),
                 ]);
