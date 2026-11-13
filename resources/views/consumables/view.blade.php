@@ -15,6 +15,13 @@
 
 {{-- Page content --}}
 @section('content')
+@if (\Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')
+    && (\App\Models\ConsumableStockSetting::current()->enabled || $consumable->usesStockLots()))
+    <div class="alert alert-info">
+        <a class="btn btn-primary" href="{{ route('consumables.stock.show', $consumable) }}">{{ trans('consumable_stock.title') }}</a>
+        @if($consumable->usesStockLots()) {{ trans('consumable_stock.tracked_help') }} @endif
+    </div>
+@endif
 
 
 

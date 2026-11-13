@@ -258,6 +258,11 @@ class ConsumablesController extends Controller
 
         $this->authorize('checkout', $consumable);
 
+        if ($consumable->usesStockLots()) {
+            return response()->json(Helper::formatStandardApiResponse('error', null,
+                trans('consumable_stock.errors.use_stock')), 409);
+        }
+
         $consumable->checkout_qty = $request->input('checkout_qty', 1);
 
         // Make sure there is at least one available to checkout

@@ -134,7 +134,7 @@ class AccessoryFilesTest extends TestCase
         // List the files to get the file ID
         $result = $this->actingAsForApi($user)
             ->getJson(
-                route('api.files.index', ['object_type' => 'accessories', 'id' => $accessory->id])
+                route('api.files.index', ['object_type' => 'accessories', 'id' => $accessory->id, 'sort' => 'id', 'order' => 'asc'])
             )
             ->assertOk()
             ->assertJsonStructure(

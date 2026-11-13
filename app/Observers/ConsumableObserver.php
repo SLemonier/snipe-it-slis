@@ -68,6 +68,12 @@ class ConsumableObserver
      */
     public function deleting(Consumable $consumable)
     {
+        // Guard before this observer can detach historical distributions or delete uploads.
+        if ($consumable->usesStockLots()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'stock' => trans('consumable_stock.errors.delete_tracked'),
+            ]);
+        }
 
         $consumable->users()->detach();
         $uploads = $consumable->uploads;

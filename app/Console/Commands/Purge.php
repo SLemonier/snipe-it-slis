@@ -97,6 +97,10 @@ class Purge extends Command
             $consumables = Consumable::whereNotNull('deleted_at')->withTrashed()->get();
             $this->info($consumables->count().' consumables purged.');
             foreach ($consumables as $consumable) {
+                if ($consumable->usesStockLots()) {
+                    $this->warn('Keeping consumable lot history: '.$consumable->id);
+                    continue;
+                }
                 $this->info('- Consumable "'.$consumable->name.'" deleted.');
                 $consumable->assetlog()->forceDelete();
                 $consumable->forceDelete();
