@@ -134,7 +134,7 @@ class LicenseUploadTest extends TestCase
         // List the files to get the file ID
         $result = $this->actingAsForApi($user)
             ->getJson(
-                route('api.files.index', ['object_type' => 'licenses', 'id' => $license->id])
+                route('api.files.index', ['object_type' => 'licenses', 'id' => $license->id, 'sort' => 'id', 'order' => 'asc'])
             )
             ->assertOk()
             ->assertJsonStructure(

@@ -134,7 +134,7 @@ class AssetModelFilesTest extends TestCase
         // List the files to get the file ID
         $result = $this->actingAsForApi($user)
             ->getJson(
-                route('api.files.index', ['object_type' => 'models', 'id' => $model->id])
+                route('api.files.index', ['object_type' => 'models', 'id' => $model->id, 'sort' => 'id', 'order' => 'asc'])
             )
             ->assertOk()
             ->assertJsonStructure(
