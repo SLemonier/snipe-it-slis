@@ -138,6 +138,13 @@ class ConsumablesTransformer
                 'restore' => $isDeleted && Gate::allows('delete', $consumable),
             ],
         ];
+        if ($consumable->usesStockLots()) {
+            $permissions_array['user_can_checkout'] = false;
+            $permissions_array['available_actions']['checkout'] = false;
+            $permissions_array['available_actions']['adjust_quantity'] = false;
+            $permissions_array['available_actions']['delete'] = false;
+            $permissions_array['available_actions']['request'] = false;
+        }
         $array += $permissions_array;
 
         return $array;

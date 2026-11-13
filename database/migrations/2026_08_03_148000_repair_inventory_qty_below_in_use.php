@@ -61,6 +61,12 @@ return new class extends Migration
     {
         $modelClass::query()->chunkById(500, function ($rows) use ($modelClass) {
             foreach ($rows as $model) {
+                // Lot-tracked quantities are projected from a separate ledger.
+                // Native action logs / legacy snapshots cannot reconstruct them.
+                if ($model instanceof \App\Models\Consumable && $model->usesStockLots()) {
+                    continue;
+                }
+
                 $inUse = method_exists($model, 'currentlyInUseCount')
                     ? (int) $model->currentlyInUseCount()
                     : 0;

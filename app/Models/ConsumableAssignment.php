@@ -29,6 +29,20 @@ class ConsumableAssignment extends Model
         'assigned_to' => 'required|exists:users,id',
     ];
 
+    public function save(array $options = [])
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($options) {
+            $parent = Consumable::withTrashed()->whereKey($this->consumable_id)->lockForUpdate()->first();
+            if ($parent?->usesStockLots()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'stock' => trans('consumable_stock.errors.use_stock'),
+                ]);
+            }
+
+            return parent::save($options);
+        });
+    }
+
     public function consumable()
     {
         return $this->belongsTo(Consumable::class);

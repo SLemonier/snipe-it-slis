@@ -917,11 +917,24 @@ class Helper
             }])
             ->whereNotNull('min_amt')
             ->notArchived();
+        $hasLotStock = \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products');
+        if ($hasLotStock) {
+            $consumablesSub->whereNotIn('id', \App\Models\ConsumableStockProduct::select('consumable_id'));
+        }
         $consumables = Consumable::query()
             ->withoutGlobalScopes()
             ->fromSub($consumablesSub, 'consumables')
             ->whereRaw('(qty - consumed_count) < (min_amt + ?)', [$alert_threshold])
             ->get();
+
+        // Tracked quantities include reserves, vehicles and bags; only usable
+        // units count. Historical user distributions are never counted twice.
+        if ($hasLotStock && \App\Models\ConsumableStockSetting::current()->enabled) {
+            $tracked = Consumable::whereIn('id', \App\Models\ConsumableStockProduct::select('consumable_id'))
+                ->whereNotNull('min_amt')->notArchived()->get()
+                ->filter(fn ($item) => $item->numRemaining() < $item->min_amt + $alert_threshold);
+            $consumables = $consumables->merge($tracked);
+        }
 
         // Archived accessories are retired from active inventory and
         // should not drive low-stock alerts even when they fall below
@@ -990,7 +1003,7 @@ class Helper
         $all_count = 0;
 
         foreach ($consumables as $consumable) {
-            $avail = $consumable->qty - $consumable->consumables_users_count;
+            $avail = $consumable->usesStockLots() ? $consumable->numRemaining() : $consumable->qty - $consumable->consumables_users_count;
             $percent = $consumable->qty > 0
                 ? number_format((($avail / $consumable->qty) * 100), 0)
                 : 100;

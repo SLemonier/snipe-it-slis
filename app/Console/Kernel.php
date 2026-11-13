@@ -18,6 +18,7 @@ class Kernel extends ConsoleKernel
         if (Setting::getSettings()?->alerts_enabled === 1) {
             $schedule->command('snipeit:inventory-alerts')->daily();
             $schedule->command('snipeit:expiring-alerts')->daily();
+            $schedule->command('snipeit:consumable-stock-alerts')->daily()->withoutOverlapping();
             $schedule->command('snipeit:expected-checkin')->daily();
             $schedule->command('snipeit:upcoming-audits')->daily();
         }

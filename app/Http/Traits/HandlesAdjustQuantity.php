@@ -35,6 +35,10 @@ trait HandlesAdjustQuantity
         string $storageKey,
     ): ?string {
         $this->authorize('update', $model);
+        if ($model instanceof \App\Models\Consumable && $model->usesStockLots()) {
+            return trans('consumable_stock.errors.use_stock');
+        }
+
 
         $filename = null;
         if ($request->hasFile('file')) {

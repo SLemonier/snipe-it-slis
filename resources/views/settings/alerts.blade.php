@@ -100,6 +100,8 @@
                                     {{ trans('admin/settings/general.legends.intervals') }}
                                 </x-form.legend>
 
+                                @include('consumables.stock.settings')
+
                                 <!-- Inventory alert threshold -->
                                 <x-form.row
                                     name="alert_threshold"

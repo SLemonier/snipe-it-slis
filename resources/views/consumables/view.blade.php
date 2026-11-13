@@ -14,6 +14,14 @@
 
 {{-- Page content --}}
 @section('content')
+@if (\Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')
+    && (\App\Models\ConsumableStockSetting::current()->enabled || $consumable->usesStockLots()))
+    <div class="alert alert-info">
+        <a class="btn btn-primary" href="{{ route('consumables.stock.show', $consumable) }}">{{ trans('consumable_stock.title') }}</a>
+        @if($consumable->usesStockLots()) {{ trans('consumable_stock.tracked_help') }} @endif
+    </div>
+@endif
+
 
     <x-container columns="2">
         @if ($consumable->deleted_at)
@@ -53,7 +61,7 @@
 
                     <x-tabs.pane name="assigned">
 
-                        @can('checkout', $consumable)
+                        @if (! $consumable->usesStockLots() && auth()->user()->can('checkout', $consumable))
                             <x-slot:bulkactions>
                                 <x-table.bulk-actions
                                     name="consumableCheckedOut"
@@ -64,7 +72,7 @@
                                     ]"
                                 />
                             </x-slot:bulkactions>
-                        @endcan
+                        @endif
 
                         <x-table
                             name="consumableCheckedOut" :presenter="\App\Presenters\ConsumablePresenter::checkedOut()"
@@ -166,7 +174,7 @@
                         @else
                             <x-button.edit :item="$consumable" :route="route('consumables.edit', $consumable->id)"/>
                             <x-button.clone :item="$consumable" :route="route('consumables.clone.create', $consumable->id)"/>
-                            @can('update', $consumable)
+                            @if (! $consumable->usesStockLots() && auth()->user()->can('update', $consumable))
                                 @php $lastOrder = $consumable->lastOrderDefaults(); @endphp
                                 <button type="button"
                                     class="btn btn-sm btn-primary adjust-quantity"
@@ -181,9 +189,11 @@
                                     <x-icon type="plus-minus" class="fa-fw" />
                                     <span class="sr-only">{{ trans('general.adjust_quantity') }}</span>
                                 </button>
-                            @endcan
+                            @endif
                             <x-button.delete :item="$consumable"/>
-                            <x-button.checkout :item="$consumable" :route="route('consumables.checkout.show', $consumable->id)" />
+                            @if (! $consumable->usesStockLots())
+                                <x-button.checkout :item="$consumable" :route="route('consumables.checkout.show', $consumable->id)" />
+                            @endif
                         @endif
                     </x-slot:buttons>
 

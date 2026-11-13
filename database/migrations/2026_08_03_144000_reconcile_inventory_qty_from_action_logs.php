@@ -55,6 +55,12 @@ return new class extends Migration
 
         $modelClass::query()->chunkById(500, function ($rows) use ($modelClass, $create, $qtyAdjust) {
             foreach ($rows as $model) {
+                // Lot-tracked quantities are projected from a separate ledger.
+                // Native action logs / legacy snapshots cannot reconstruct them.
+                if ($model instanceof \App\Models\Consumable && $model->usesStockLots()) {
+                    continue;
+                }
+
                 // Guard against clobbering rows the AdjustsQuantity trait
                 // never touched. A row with zero qty_adjust entries is
                 // definitionally pre-trait: every post-trait qty change

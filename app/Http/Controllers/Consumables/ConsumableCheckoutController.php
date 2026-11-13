@@ -37,6 +37,11 @@ class ConsumableCheckoutController extends Controller
 
             $this->authorize('checkout', $consumable);
 
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
+
             // Make sure the category is valid
             if ($consumable->category) {
 
@@ -94,6 +99,11 @@ class ConsumableCheckoutController extends Controller
 
         $this->authorize('checkout', $consumable);
 
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
+
         // If the quantity is not present in the request or is not a positive integer, set it to 1
         $quantity = $request->input('checkout_qty');
         if (! isset($quantity) || ! ctype_digit((string) $quantity) || $quantity <= 0) {
@@ -138,7 +148,7 @@ class ConsumableCheckoutController extends Controller
         DB::transaction(function () use ($consumable, $request, $admin_user, $quantity, &$overAllocated): void {
             $locked = Consumable::whereKey($consumable->id)->lockForUpdate()->first();
 
-            if (! $locked || $locked->numRemaining() < $quantity) {
+            if (! $locked || $locked->usesStockLots() || $locked->numRemaining() < $quantity) {
                 $overAllocated = true;
 
                 return;
@@ -218,6 +228,11 @@ class ConsumableCheckoutController extends Controller
     {
         $this->authorize('checkout', $consumable);
 
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
+
         if ($consumable->numRemaining() <= 0) {
             return redirect()->route('consumables.show', $consumable)
                 ->with('error', trans('admin/consumables/message.checkout.unavailable', [
@@ -257,6 +272,11 @@ class ConsumableCheckoutController extends Controller
     public function bulkFulfillStore(Request $request, Consumable $consumable): RedirectResponse
     {
         $this->authorize('checkout', $consumable);
+
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
 
         // Checkboxes post as enabled_requests[<request_id>]="1",
         // keyed by request id (unchecked boxes don't post at all).
@@ -327,7 +347,7 @@ class ConsumableCheckoutController extends Controller
             DB::transaction(function () use ($consumable, $targetUser, $qty, $note, $adminUser, &$overAllocated): void {
                 $locked = Consumable::whereKey($consumable->id)->lockForUpdate()->first();
 
-                if (! $locked || $locked->numRemaining() < $qty) {
+                if (! $locked || $locked->usesStockLots() || $locked->numRemaining() < $qty) {
                     $overAllocated = true;
 
                     return;
@@ -390,6 +410,11 @@ class ConsumableCheckoutController extends Controller
     {
         $this->authorize('checkout', $consumable);
 
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
+
         if ($assignment->consumable_id !== $consumable->id) {
             abort(404);
         }
@@ -448,6 +473,11 @@ class ConsumableCheckoutController extends Controller
         $consumable = $assignments->first()->consumable;
         $this->authorize('checkout', $consumable);
 
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
+
         return view('consumables.bulk-consume', [
             'consumable' => $consumable,
             'assignments' => $assignments,
@@ -481,6 +511,11 @@ class ConsumableCheckoutController extends Controller
 
         $consumable = $assignments->first()->consumable;
         $this->authorize('checkout', $consumable);
+
+        if ($consumable->usesStockLots()) {
+            return redirect()->route('consumables.stock.show', $consumable)
+                ->with('error', trans('consumable_stock.errors.use_stock'));
+        }
 
         $now = now();
         $consumed = 0;

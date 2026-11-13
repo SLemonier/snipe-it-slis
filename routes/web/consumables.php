@@ -7,6 +7,19 @@ use Illuminate\Support\Facades\Route;
 use Tabuna\Breadcrumbs\Trail;
 
 Route::group(['prefix' => 'consumables', 'middleware' => ['auth']], function () {
+    Route::get('stock', [Consumables\ConsumableStockController::class, 'index'])->name('consumables.stock.index')
+        ->breadcrumbs(fn (Trail $trail) => $trail->parent('consumables.index')
+            ->push(trans('consumable_stock.title'), route('consumables.stock.index')));
+    Route::get('stock/places', [Consumables\ConsumableStockController::class, 'places'])->name('consumables.stock.places')
+        ->breadcrumbs(fn (Trail $trail) => $trail->parent('consumables.stock.index')
+            ->push(trans('consumable_stock.places'), route('consumables.stock.places')));
+    Route::post('stock/places', [Consumables\ConsumableStockController::class, 'savePlace'])->name('consumables.stock.places.store');
+    Route::put('stock/places/{place}', [Consumables\ConsumableStockController::class, 'savePlace'])->missing(fn () => abort(404))->name('consumables.stock.places.update');
+    Route::get('{consumable}/stock', [Consumables\ConsumableStockController::class, 'show'])->name('consumables.stock.show')
+        ->breadcrumbs(fn (Trail $trail, Consumable $consumable) => $trail->parent('consumables.stock.index')
+            ->push($consumable->name, route('consumables.stock.show', $consumable)));
+    Route::post('{consumable}/stock', [Consumables\ConsumableStockController::class, 'store'])->name('consumables.stock.store');
+
     Route::get(
         '{consumablesID}/checkout',
         [Consumables\ConsumableCheckoutController::class, 'create']
