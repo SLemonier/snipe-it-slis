@@ -37,10 +37,10 @@ class ConsumableCheckoutController extends Controller
 
             $this->authorize('checkout', $consumable);
 
-        if ($consumable->usesStockLots()) {
-            return redirect()->route('consumables.stock.show', $consumable)
-                ->with('error', trans('consumable_stock.errors.use_stock'));
-        }
+            if ($consumable->usesStockLots()) {
+                return redirect()->route('consumables.stock.show', $consumable)
+                    ->with('error', trans('consumable_stock.errors.use_stock'));
+            }
 
             // Make sure the category is valid
             if ($consumable->category) {

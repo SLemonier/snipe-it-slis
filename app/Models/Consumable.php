@@ -528,11 +528,12 @@ class Consumable extends SnipeModel
     {
         if ($this->usesStockLots()) {
             $product = ConsumableStockProduct::find($this->id);
+
             return (int) ConsumableStockBalance::whereHas('lot', function ($query) use ($product) {
                 $query->where('consumable_id', $this->id)->where('unidentified', false)->where('quarantined', false)
                     ->where(function ($date) use ($product) {
                         $date->whereDate('expires_on', '>=', today());
-                        if (!$product->expiry_required) {
+                        if (! $product->expiry_required) {
                             $date->orWhereNull('expires_on');
                         }
                     });
@@ -590,7 +591,6 @@ class Consumable extends SnipeModel
         return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')
             && ConsumableStockProduct::whereKey($this->id)->exists();
     }
-
 
     /**
      * Serialize legacy writes with lot activation. Ledger movements update their

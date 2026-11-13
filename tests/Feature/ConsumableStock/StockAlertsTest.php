@@ -8,7 +8,6 @@ use App\Models\ConsumableStockPlace as Place;
 use App\Models\ConsumableStockSetting;
 use App\Models\User;
 use App\Services\ConsumableStock;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -16,7 +15,9 @@ use Tests\TestCase;
 class StockAlertsTest extends TestCase
 {
     private Consumable $item;
+
     private Place $reserve;
+
     private Place $bag;
 
     protected function setUp(): void
@@ -122,8 +123,7 @@ class StockAlertsTest extends TestCase
     {
         $this->operation('minimum', ['to_place_id' => $this->bag->id, 'quantity' => 2]);
         $this->artisan('snipeit:consumable-stock-alerts')->assertExitCode(0);
-        Mail::assertSent(ConsumableStockAlert::class, fn ($mail) =>
-            $mail->rows[0]['kind'] === 'low' && $mail->rows[0]['quantity'] === 0);
+        Mail::assertSent(ConsumableStockAlert::class, fn ($mail) => $mail->rows[0]['kind'] === 'low' && $mail->rows[0]['quantity'] === 0);
         $this->receipt('GOOD', '2028-01-01', $this->bag->id);
         $this->artisan('snipeit:consumable-stock-alerts')->assertExitCode(0);
         $this->assertDatabaseCount('consumable_stock_alerts', 0);

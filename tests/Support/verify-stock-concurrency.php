@@ -6,7 +6,6 @@ $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 use App\Models\Consumable;
-use App\Models\ConsumableStockBalance;
 use App\Models\ConsumableStockPlace;
 use App\Models\ConsumableStockSetting;
 use App\Models\User;
@@ -16,8 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-if (!app()->environment('testing') || config('database.connections.mysql.database') !== 'snipeit_test'
-    || !function_exists('pcntl_fork')) {
+if (! app()->environment('testing') || config('database.connections.mysql.database') !== 'snipeit_test'
+    || ! function_exists('pcntl_fork')) {
     throw new RuntimeException('Run only with pcntl against the isolated snipeit_test database.');
 }
 $admin = User::factory()->superuser()->create();
@@ -45,11 +44,11 @@ foreach ([false, true] as $replay) {
         if ($pid === 0) {
             DB::purge();
             $deadline = microtime(true) + 10;
-            while (!file_exists($barrier) && microtime(true) < $deadline) {
+            while (! file_exists($barrier) && microtime(true) < $deadline) {
                 usleep(1000);
                 clearstatcache();
             }
-            if (!file_exists($barrier)) {
+            if (! file_exists($barrier)) {
                 exit(4);
             }
             try {

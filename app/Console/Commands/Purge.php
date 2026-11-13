@@ -167,7 +167,6 @@ class Purge extends Command
             $parentQuery->whereNotIn('id', \App\Models\ConsumableStockProduct::select('consumable_id'));
         }
 
-
         // show_in_list=0 excludes a user from checkout-target dropdowns
         // in the UI. Preserved by the purge (matches the pre-refactor
         // behavior) so users with this flag stick around even when

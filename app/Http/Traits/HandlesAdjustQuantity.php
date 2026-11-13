@@ -39,7 +39,6 @@ trait HandlesAdjustQuantity
             return trans('consumable_stock.errors.use_stock');
         }
 
-
         $filename = null;
         if ($request->hasFile('file')) {
             $filename = app(UploadFileRequest::class)->handleFile(

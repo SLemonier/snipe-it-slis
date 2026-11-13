@@ -76,11 +76,11 @@ return new class extends Migration
             ->whereColumn('qty', '<', 'legacy_qty')
             ->chunkById(500, function ($rows) use ($modelClass, $qtyAdjust, $table) {
                 foreach ($rows as $model) {
-                // Lot-tracked quantities are projected from a separate ledger.
-                // Native action logs / legacy snapshots cannot reconstruct them.
-                if ($model instanceof \App\Models\Consumable && $model->usesStockLots()) {
-                    continue;
-                }
+                    // Lot-tracked quantities are projected from a separate ledger.
+                    // Native action logs / legacy snapshots cannot reconstruct them.
+                    if ($model instanceof \App\Models\Consumable && $model->usesStockLots()) {
+                        continue;
+                    }
 
                     $qtyAdjustCount = DB::table('action_logs')
                         ->where('item_type', $modelClass)

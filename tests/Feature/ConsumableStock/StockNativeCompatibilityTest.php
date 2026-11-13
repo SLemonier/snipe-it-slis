@@ -21,14 +21,16 @@ use Tests\TestCase;
 class StockNativeCompatibilityTest extends TestCase
 {
     private Consumable $item;
+
     private ConsumableAssignment $assignment;
+
     private User $admin;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->admin = User::factory()->superuser()->create();
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
         $this->item = Consumable::factory()->create(['qty' => 12, 'company_id' => null, 'min_amt' => 3]);
         $this->item->users()->attach($this->admin->id, ['created_by' => $this->admin->id]);
         $this->assignment = $this->item->consumableAssignments()->firstOrFail();
@@ -63,7 +65,7 @@ class StockNativeCompatibilityTest extends TestCase
             ->assertStatus(409);
         $this->postJson(route('api.consumables.bulkconsume'), ['ids' => [$this->assignment->id]])
             ->assertStatus(409);
-        $this->actingAs($this->admin);
+        $this->actingAs($this->admin, 'web');
         $this->post(route('consumables.consume', [$this->item, $this->assignment]))
             ->assertRedirect(route('consumables.stock.show', $this->item));
         $this->post(route('consumables.bulkconsume.store'), ['ids' => [$this->assignment->id]])
@@ -116,7 +118,7 @@ class StockNativeCompatibilityTest extends TestCase
     public function test_native_low_inventory_uses_usable_lots_instead_of_historical_distributions(): void
     {
         // Eleven unidentified units are physical stock but cannot be used.
-        $this->settings->update(['alert_threshold' => 0]);
+        $this->settings->set(['alert_threshold' => 0]);
         $alerts = collect(Helper::checkLowInventory())->where('type', 'consumables');
         $row = $alerts->firstWhere('id', $this->item->id);
         $this->assertNotNull($row);

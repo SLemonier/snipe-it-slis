@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Consumables;
 
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ConsumableStockPlaceRequest;
 use App\Http\Requests\ConsumableStockRequest;
+use App\Http\Transformers\ConsumableStockTransformer;
 use App\Models\Company;
 use App\Models\Consumable;
 use App\Models\ConsumableStockOperation;
@@ -13,8 +15,6 @@ use App\Models\ConsumableStockProduct;
 use App\Models\ConsumableStockSetting;
 use App\Services\ConsumableStock;
 use Illuminate\Http\Request;
-use App\Http\Requests\ConsumableStockPlaceRequest;
-use App\Http\Transformers\ConsumableStockTransformer;
 
 class ConsumableStockController extends Controller
 {
@@ -34,7 +34,7 @@ class ConsumableStockController extends Controller
             do {
                 $before = count($placeIds);
                 foreach ($places as $place) {
-                    if (in_array($place->parent_id, $placeIds, true) && !in_array($place->id, $placeIds, true)) {
+                    if (in_array($place->parent_id, $placeIds, true) && ! in_array($place->id, $placeIds, true)) {
                         $placeIds[] = $place->id;
                     }
                 }
@@ -55,6 +55,7 @@ class ConsumableStockController extends Controller
             }
             $summaries[$item->id] = $summary;
         }
+
         return view('consumables.stock.index', compact('items', 'summaries', 'places'));
     }
 
@@ -69,6 +70,7 @@ class ConsumableStockController extends Controller
             $offset = max(0, (int) $request->input('offset', 0));
             $limit = max(1, min(100, (int) $request->input('limit', 30)));
             $history = $historyQuery->offset($offset)->limit($limit)->get();
+
             return response()->json(Helper::formatStandardApiResponse('success', [
                 'stock' => $snapshot,
                 'history' => $history->map(fn ($op) => (new ConsumableStockTransformer)->operation($op))->all(),
@@ -78,6 +80,7 @@ class ConsumableStockController extends Controller
         $history = $historyQuery->paginate(30);
         $places = ConsumableStockPlace::where('company_id', $consumable->company_id)->orderBy('name')->get();
         $module = ConsumableStockSetting::current();
+
         return view('consumables.stock.show', compact('consumable', 'snapshot', 'history', 'places', 'module'));
     }
 
@@ -89,6 +92,7 @@ class ConsumableStockController extends Controller
                 'operation_id' => $operation->id, 'stock' => $stock->snapshot($consumable->fresh()),
             ]));
         }
+
         return redirect()->route('consumables.stock.show', $consumable)->with('success', trans('consumable_stock.saved'));
     }
 
@@ -100,6 +104,7 @@ class ConsumableStockController extends Controller
             return response()->json(Helper::formatStandardApiResponse('success', $places->map(fn ($place) => (new ConsumableStockTransformer)->place($place))->all()));
         }
         $companies = Company::orderBy('name')->get();
+
         return view('consumables.stock.places', compact('places', 'companies'));
     }
 
@@ -111,6 +116,7 @@ class ConsumableStockController extends Controller
         if ($request->is('api/*')) {
             return response()->json(Helper::formatStandardApiResponse('success', ['id' => $place->id]));
         }
+
         return redirect()->route('consumables.stock.places')->with('success', trans('consumable_stock.saved'));
     }
 }

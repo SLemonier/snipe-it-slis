@@ -7,14 +7,15 @@ use App\Models\Consumable;
 use App\Models\ConsumableStockPlace as Place;
 use App\Models\ConsumableStockSetting;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class StockHttpTest extends TestCase
 {
     private Consumable $item;
+
     private Place $place;
+
     private User $admin;
 
     protected function setUp(): void

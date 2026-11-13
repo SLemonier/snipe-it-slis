@@ -27,7 +27,7 @@ class ConsumableStockRequest extends Request
             'unit' => [Rule::requiredIf($action === 'enable'), 'nullable', 'string', 'max:50'],
             'expiry_required' => [Rule::requiredIf($action === 'enable'), 'boolean'],
             'quantity' => [
-                Rule::requiredIf(!in_array($action, ['enable', 'quarantine', 'amend_lot'])),
+                Rule::requiredIf(! in_array($action, ['enable', 'quarantine', 'amend_lot'])),
                 'nullable', 'integer', $action === 'adjust' ? 'between:-99999,99999' : ($action === 'minimum' ? 'between:0,99999' : 'between:1,99999'),
                 $action === 'adjust' ? 'not_in:0' : 'not_in:-1',
             ],

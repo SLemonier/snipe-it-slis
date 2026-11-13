@@ -171,6 +171,7 @@ class PredefinedKitCheckoutService
         foreach ($consumables as $consumable) {
             if ($consumable->usesStockLots()) {
                 $errors[] = $consumable->name.': '.trans('consumable_stock.errors.use_stock');
+
                 continue;
             }
             // FMCS tenant isolation, see comment in getAssetsToAdd.

@@ -72,7 +72,7 @@ trait CompanyableTrait
                 return $target->canReceiveFromCompany(null);
             }
 
-            if (is_null($target->company_id)) {
+            if (is_null($target->getAttribute('company_id'))) {
                 return true;
             }
 
@@ -89,7 +89,7 @@ trait CompanyableTrait
 
         $targetCompanyId = method_exists($target, 'effectiveFmcsCompanyId')
             ? $target->effectiveFmcsCompanyId()
-            : ($target->company_id ? (int) $target->company_id : null);
+            : ($target->getAttribute('company_id') ? (int) $target->getAttribute('company_id') : null);
 
         if (is_null($targetCompanyId)) {
             return (bool) $settings->null_company_is_floater;

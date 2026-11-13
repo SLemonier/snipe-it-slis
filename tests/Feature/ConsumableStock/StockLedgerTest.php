@@ -7,7 +7,6 @@ use App\Models\ConsumableStockBalance as Balance;
 use App\Models\ConsumableStockLot as Lot;
 use App\Models\ConsumableStockOperation as Operation;
 use App\Models\ConsumableStockPlace as Place;
-use App\Models\ConsumableStockProduct as Product;
 use App\Models\ConsumableStockSetting;
 use App\Models\User;
 use App\Services\ConsumableStock;
@@ -19,8 +18,11 @@ use Tests\TestCase;
 class StockLedgerTest extends TestCase
 {
     private ConsumableStock $stock;
+
     private Consumable $item;
+
     private Place $reserve;
+
     private Place $vehicle;
 
     protected function setUp(): void
@@ -51,6 +53,7 @@ class StockLedgerTest extends TestCase
     {
         $this->operation('receive', ['quantity' => $quantity, 'number' => $number,
             'expires_on' => $expiry, 'to_place_id' => $this->reserve->id]);
+
         return Lot::where('number', $number)->firstOrFail();
     }
 

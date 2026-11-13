@@ -6,9 +6,7 @@ use Illuminate\Mail\Mailable;
 
 class ConsumableStockAlert extends Mailable
 {
-    public function __construct(public array $rows)
-    {
-    }
+    public function __construct(public array $rows) {}
 
     public function build()
     {

@@ -274,7 +274,6 @@ class ConsumablesController extends Controller
                 trans('consumable_stock.errors.use_stock')), 409);
         }
 
-
         // supplier_id, purchase_date, purchase_cost, and order_number
         // are create-only on the parent. Post-create acquisitions live
         // as Orders + OrderItems, so update-mode drops all four.

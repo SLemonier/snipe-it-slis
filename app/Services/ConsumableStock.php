@@ -36,12 +36,13 @@ class ConsumableStock
             $existing = Operation::find($data['operation_id']);
             if ($existing) {
                 $this->check(hash_equals($existing->fingerprint, $fingerprint), 'duplicate');
+
                 return $existing;
             }
 
             $product = Product::find($locked->id);
             if ($action === 'enable') {
-                $this->check(!$product, 'already_enabled');
+                $this->check(! $product, 'already_enabled');
             } else {
                 $this->check($product !== null, 'not_enabled');
                 // Detect any legacy direct SQL/import path before it can corrupt this ledger.
@@ -75,6 +76,7 @@ class ConsumableStock
                     $this->add($lot, $place, $qty - $assigned);
                     $this->record($operation, $lot, null, $place->id, $qty - $assigned);
                 }
+
                 return $operation;
             }
 
@@ -84,14 +86,15 @@ class ConsumableStock
                     ['consumable_id' => $locked->id, 'place_id' => $place->id],
                     ['quantity' => $data['quantity']]
                 );
+
                 return $operation;
             }
 
             if ($action === 'amend_lot') {
                 $lot = $this->lot($locked, $data['lot_id']);
-                $this->check(!$lot->unidentified, 'not_unidentified');
-                $this->check(!$product->expiry_required || !empty($data['expires_on']), 'expiry_required');
-                $this->check(!Lot::where('consumable_id', $locked->id)->where('number', $data['number'])
+                $this->check(! $lot->unidentified, 'not_unidentified');
+                $this->check(! $product->expiry_required || ! empty($data['expires_on']), 'expiry_required');
+                $this->check(! Lot::where('consumable_id', $locked->id)->where('number', $data['number'])
                     ->where('id', '!=', $lot->id)->exists(), 'lot_conflict');
                 $operation->details = array_merge($data, ['previous_number' => $lot->number,
                     'previous_expires_on' => $lot->expires_on?->toDateString()]);
@@ -99,6 +102,7 @@ class ConsumableStock
                 $lot->number = $data['number'];
                 $lot->expires_on = $data['expires_on'] ?? null;
                 $lot->save();
+
                 return $operation;
             }
 
@@ -108,6 +112,7 @@ class ConsumableStock
                 $operation->save();
                 $lot->quarantined = $data['quarantined'];
                 $lot->save();
+
                 return $operation;
             }
 
@@ -117,6 +122,7 @@ class ConsumableStock
                 $this->add($lot, $place, $data['quantity']);
                 $this->record($operation, $lot, null, $place->id, $data['quantity']);
                 $this->adjustLegacyProjection($locked, $product, $data['quantity']);
+
                 return $operation;
             }
 
@@ -129,16 +135,17 @@ class ConsumableStock
                 $this->add($target, $place, $data['quantity']);
                 $this->record($operation, $source, $place->id, null, $data['quantity']);
                 $this->record($operation, $target, null, $place->id, $data['quantity']);
+
                 return $operation;
             }
 
             $sourcePlace = $this->place($locked, $data['from_place_id']);
             $targetPlace = $action === 'transfer' ? $this->place($locked, $data['to_place_id']) : null;
-            $this->check(!$targetPlace || $targetPlace->id !== $sourcePlace->id, 'same_place');
+            $this->check(! $targetPlace || $targetPlace->id !== $sourcePlace->id, 'same_place');
             $quantity = abs($data['quantity']);
             $remaining = $quantity;
 
-            if (!empty($data['lot_id'])) {
+            if (! empty($data['lot_id'])) {
                 $lots = collect([$this->lot($locked, $data['lot_id'])]);
             } else {
                 // The operator can choose the actual lot; omitted lot invokes FEFO.
@@ -148,14 +155,15 @@ class ConsumableStock
             }
 
             foreach ($lots as $lot) {
-                if (in_array($action, ['transfer', 'consume']) && !$lot->usable($product->expiry_required)) {
-                    if (!empty($data['lot_id'])) {
+                if (in_array($action, ['transfer', 'consume']) && ! $lot->usable($product->expiry_required)) {
+                    if (! empty($data['lot_id'])) {
                         $this->check(false, 'unusable');
                     }
+
                     continue;
                 }
                 $balance = Balance::where('lot_id', $lot->id)->where('place_id', $sourcePlace->id)->first();
-                $take = min($remaining, $balance?->quantity ?? 0);
+                $take = min($remaining, $balance->quantity ?? 0);
                 if ($take === 0) {
                     continue;
                 }
@@ -170,9 +178,10 @@ class ConsumableStock
                 }
             }
             $this->check($remaining === 0, 'insufficient');
-            if (!$targetPlace) {
+            if (! $targetPlace) {
                 $this->adjustLegacyProjection($locked, $product, -$quantity);
             }
+
             return $operation;
         }, 3);
     }
@@ -180,6 +189,7 @@ class ConsumableStock
     public function savePlace(array $data, ?Place $place = null): Place
     {
         Gate::authorize('superuser');
+
         return DB::transaction(function () use ($data, $place) {
             // A stable singleton lock serializes parent moves and prevents concurrent cycles.
             DB::table('consumable_stock_settings')->insertOrIgnore([
@@ -192,16 +202,16 @@ class ConsumableStock
             if ($place->exists) {
                 $this->check($place->company_id === $company, 'place_company');
             }
-            $parent = !empty($data['parent_id']) ? Place::find($data['parent_id']) : null;
+            $parent = ! empty($data['parent_id']) ? Place::find($data['parent_id']) : null;
             $this->check(empty($data['parent_id']) || $parent !== null, 'invalid_reference');
             $cursor = $parent;
             while ($cursor) {
-                $this->check(!$place->exists || $cursor->id !== $place->id, 'cycle');
+                $this->check(! $place->exists || $cursor->id !== $place->id, 'cycle');
                 $this->check($cursor->company_id === $company, 'company');
                 $cursor = $cursor->parent;
             }
             foreach (['asset_id' => Asset::class, 'location_id' => Location::class] as $key => $model) {
-                if (!empty($data[$key])) {
+                if (! empty($data[$key])) {
                     $linked = $model::findOrFail($data[$key]);
                     $this->check(($linked->company_id === null ? null : (int) $linked->company_id) === $company, 'company');
                 }
@@ -213,6 +223,7 @@ class ConsumableStock
                 'before_state' => $before ? json_encode($before) : null,
                 'after_state' => json_encode($place->getAttributes()), 'created_at' => now(),
             ]);
+
             return $place;
         }, 3);
     }
@@ -231,7 +242,7 @@ class ConsumableStock
                 if ($balance->quantity === 0) {
                     continue;
                 }
-                $available = $lot->usable($product?->expiry_required ?? true);
+                $available = $lot->usable($product->expiry_required ?? true);
                 $physical += $balance->quantity;
                 $usable += $available ? $balance->quantity : 0;
                 $rows[] = [
@@ -246,6 +257,7 @@ class ConsumableStock
         $minimums = DB::table('consumable_stock_minimums')->where('consumable_id', $item->id)->get()
             ->map(function ($minimum) use ($rows) {
                 $available = collect($rows)->where('place_id', $minimum->place_id)->where('usable', true)->sum('quantity');
+
                 return ['place_id' => $minimum->place_id, 'minimum' => $minimum->quantity,
                     'available' => $available, 'low' => $available < $minimum->quantity];
             })->all();
@@ -254,8 +266,8 @@ class ConsumableStock
             'consumable_id' => $item->id, 'enabled' => $product !== null,
             'unit' => $product?->unit, 'expiry_required' => $product?->expiry_required,
             'physical' => $physical, 'usable' => $usable, 'unavailable' => $physical - $usable,
-            'legacy_assignments' => $product?->opening_assignments ?? $this->assignmentCount($item),
-            'consistent' => !$product || ((int) $item->getRawOriginal('qty') === $product->expected_qty
+            'legacy_assignments' => $product->opening_assignments ?? $this->assignmentCount($item),
+            'consistent' => ! $product || ((int) $item->getRawOriginal('qty') === $product->expected_qty
                 && $this->assignmentCount($item) === $product->opening_assignments),
             'balances' => $rows, 'minimums' => $minimums,
         ];
@@ -272,6 +284,7 @@ class ConsumableStock
         $this->check($place !== null, 'invalid_reference');
         $this->check(Company::isCurrentUserHasAccess($place)
             && ($place->company_id === ($item->company_id === null ? null : (int) $item->company_id)), 'company');
+
         return $place;
     }
 
@@ -279,20 +292,22 @@ class ConsumableStock
     {
         $lot = Lot::where('consumable_id', $item->id)->find($id);
         $this->check($lot !== null, 'invalid_reference');
+
         return $lot;
     }
 
     private function resolveLot(Consumable $item, Product $product, array $data): Lot
     {
         $expiry = $data['expires_on'] ?? null;
-        $this->check(!$product->expiry_required || $expiry !== null, 'expiry_required');
+        $this->check(! $product->expiry_required || $expiry !== null, 'expiry_required');
         $lot = Lot::firstOrNew(['consumable_id' => $item->id, 'number' => $data['number']]);
         if ($lot->exists) {
-            $this->check(!$lot->unidentified && $lot->expires_on?->toDateString() === $expiry, 'lot_conflict');
+            $this->check(! $lot->unidentified && $lot->expires_on?->toDateString() === $expiry, 'lot_conflict');
         } else {
             $lot->expires_on = $expiry;
             $lot->save();
         }
+
         return $lot;
     }
 
@@ -331,7 +346,7 @@ class ConsumableStock
 
     private function check(bool $condition, string $message): void
     {
-        if (!$condition) {
+        if (! $condition) {
             throw ValidationException::withMessages(['stock' => trans('consumable_stock.errors.'.$message)]);
         }
     }

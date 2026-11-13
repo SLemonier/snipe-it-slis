@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
-if (!app()->environment('testing') || config('database.connections.mysql.database') !== 'snipeit_test') {
+if (! app()->environment('testing') || config('database.connections.mysql.database') !== 'snipeit_test') {
     throw new RuntimeException('This fixture must only run against the isolated snipeit_test database.');
 }
 $modulePath = database_path('migrations/2026_11_13_100000_create_consumable_stock_tables.php');
