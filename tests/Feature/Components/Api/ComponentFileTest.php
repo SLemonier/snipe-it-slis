@@ -132,7 +132,7 @@ class ComponentFileTest extends TestCase
         // List the files to get the file ID
         $result = $this->actingAsForApi($user)
             ->getJson(
-                route('api.files.index', ['object_type' => 'components', 'id' => $component->id])
+                route('api.files.index', ['object_type' => 'components', 'id' => $component->id, 'sort' => 'id', 'order' => 'asc'])
             )
             ->assertOk()
             ->assertJsonStructure(
