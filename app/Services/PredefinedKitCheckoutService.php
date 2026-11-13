@@ -169,6 +169,11 @@ class PredefinedKitCheckoutService
         $consumables = $kit->consumables()->with('users')->get();
         $eligible = [];
         foreach ($consumables as $consumable) {
+            if ($consumable->usesStockLots()) {
+                $errors[] = $consumable->name.': '.trans('consumable_stock.errors.use_stock');
+
+                continue;
+            }
             // FMCS tenant isolation, see comment in getAssetsToAdd.
             if (! $consumable->canCheckoutTo($user)) {
                 $errors[] = trans('general.error_checkout_company_mismatch', [
@@ -288,7 +293,7 @@ class PredefinedKitCheckoutService
                     // capacity was already consumed by a racing request.
                     $requestedQuantity = $consumable->pivot->quantity;
                     $locked = Consumable::whereKey($consumable->id)->lockForUpdate()->first();
-                    if (! $locked || $locked->numRemaining() < $requestedQuantity) {
+                    if (! $locked || $locked->usesStockLots() || $locked->numRemaining() < $requestedQuantity) {
                         $errors[] = trans('admin/kits/general.none_consumables', [
                             'consumable' => $consumable->name,
                             'qty' => $requestedQuantity,

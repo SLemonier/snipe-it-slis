@@ -1,0 +1,134 @@
+name: Consumable stock on MariaDB
+
+on:
+  pull_request:
+    branches: [production/8.8.3]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: consumable-stock-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stock:
+    name: Upgrade and stock / MariaDB ${{ matrix.mariadb }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mariadb: ['10.6', '10.11']
+    services:
+      mariadb:
+        image: mariadb:${{ matrix.mariadb }}
+        env:
+          MARIADB_ROOT_PASSWORD: testing-only
+          MARIADB_DATABASE: snipeit_test
+        ports: ['33306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s --health-timeout=5s --health-retries=10
+    env:
+      APP_ENV: testing
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 33306
+      DB_DATABASE: snipeit_test
+      DB_USERNAME: root
+      DB_PASSWORD: testing-only
+      MAIL_MAILER: array
+      CACHE_STORE: array
+      CACHE_DRIVER: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, ldap, zip, bcmath, pdo_mysql, pcntl
+          coverage: none
+          tools: composer:2.8
+          ini-values: memory_limit=2G
+      - name: Seed real 8.1.18 with installed lot module
+        run: |
+          git fetch origin 240703d7bdd527950800d05bdd160825b30f587f
+          git worktree add /tmp/snipeit-8118 240703d7bdd527950800d05bdd160825b30f587f
+          cp tests/Support/verify-stock-version-upgrade.php /tmp/snipeit-8118/tests/Support/
+          cd /tmp/snipeit-8118
+          cp .env.testing.example .env
+          composer install --no-interaction --no-scripts --no-progress --prefer-dist
+          php artisan key:generate
+          php tests/Support/verify-stock-version-upgrade.php seed /tmp/stock-before.json
+      - name: Install pinned 8.8.3 dependencies
+        run: composer install --no-interaction --no-scripts --no-progress --prefer-dist
+      - name: Upgrade populated database and verify preservation
+        run: |
+          cp .env.testing.example .env
+          cp .env.testing.example .env.testing
+          php artisan key:generate
+          php artisan migrate --force
+          php tests/Support/verify-stock-version-upgrade.php verify /tmp/stock-before.json
+          php artisan migrate --force
+          php artisan passport:install --no-interaction
+      - name: Verify concurrent writes and retries
+        run: php tests/Support/verify-stock-concurrency.php
+      - name: Check PHP syntax and compile views
+        run: |
+          git diff --name-only --diff-filter=AM 621e30486a59304f2a5288fb62c4aa91b08e0a84 -- '*.php' | while IFS= read -r file; do php -l "$file" || exit 1; done
+          php artisan view:cache
+      - name: Stock and native consumable regression tests
+        run: php artisan test --compact tests/Feature/ConsumableStock tests/Feature/Consumables tests/Feature/Checkouts/Api/ConsumableCheckoutTest.php tests/Feature/Checkouts/Ui/ConsumableCheckoutTest.php tests/Feature/PredefinedKits tests/Feature/Settings/AlertsSettingTest.php tests/Feature/Console/Commands/PurgeTest.php tests/Feature/Users/Ui/BulkActions/BulkCheckinConsumableFmcsTest.php tests/Feature/Helpers/CheckLowInventoryTest.php tests/Feature/InventoryAdjust/AdjustQuantityRaceConditionTest.php tests/Unit/ConsumableTest.php tests/Unit/Models/Consumable
+
+  formatting:
+    name: Format changed PHP
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: gd, ldap, zip, bcmath
+          coverage: none
+      - run: composer install --no-interaction --no-scripts --no-progress --prefer-dist
+      - name: Format and report changed sources
+        run: |
+          git reset --soft 621e30486a59304f2a5288fb62c4aa91b08e0a84
+          python3 - <<'PY'
+          import subprocess, pathlib, json
+          files = subprocess.check_output(['git', 'diff', '--name-only', '--diff-filter=AM', 'HEAD', '--', '*.php'], text=True).splitlines()
+          pathlib.Path('/tmp/before-format.json').write_text(json.dumps({p: pathlib.Path(p).read_text() for p in files}))
+          PY
+          vendor/bin/pint --dirty --format agent
+          python3 - <<'PY'
+          import pathlib, json, base64
+          before = json.loads(pathlib.Path('/tmp/before-format.json').read_text())
+          changed = False
+          for p, previous in before.items():
+              current = pathlib.Path(p).read_text()
+              if current != previous:
+                  changed = True
+                  payload = json.dumps({'path': p, 'content': current})
+                  print('STOCK_FORMAT:' + base64.b64encode(payload.encode()).decode())
+          if changed:
+              raise SystemExit('Commit the reported Pint formatting changes.')
+          PY
+          vendor/bin/pint --dirty --test --format agent
+
+  docker:
+    name: Build the 8.8.3 Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build without publishing
+        run: docker build --tag snipeit-stock:test .
+      - name: Verify module in the image
+        run: |
+          docker run --rm --entrypoint php snipeit-stock:test -l app/Services/ConsumableStock.php
+          docker run --rm --entrypoint php snipeit-stock:test -l app/Console/Commands/SendConsumableStockAlerts.php

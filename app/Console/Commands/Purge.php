@@ -161,6 +161,11 @@ class Purge extends Command
         $label = class_basename($modelClass);
 
         $parentQuery = DB::table($table)->whereNotNull('deleted_at');
+        // Keep the parent and all of its history, including when deletion was
+        // performed by an old integration outside Eloquent.
+        if ($modelClass === Consumable::class && \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')) {
+            $parentQuery->whereNotIn('id', \App\Models\ConsumableStockProduct::select('consumable_id'));
+        }
 
         // show_in_list=0 excludes a user from checkout-target dropdowns
         // in the UI. Preserved by the purge (matches the pre-refactor

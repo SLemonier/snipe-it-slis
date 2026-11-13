@@ -269,6 +269,10 @@ class ConsumablesController extends Controller
         $qtyBefore = (int) $consumable->qty;
         $qtyRequested = $request->has('qty') ? (int) $request->input('qty') : $qtyBefore;
         $qtyDelta = $qtyRequested - $qtyBefore;
+        if ($qtyDelta !== 0 && $consumable->usesStockLots()) {
+            return response()->json(Helper::formatStandardApiResponse('error', null,
+                trans('consumable_stock.errors.use_stock')), 409);
+        }
 
         // supplier_id, purchase_date, purchase_cost, and order_number
         // are create-only on the parent. Post-create acquisitions live
@@ -430,7 +434,7 @@ class ConsumablesController extends Controller
         $this->authorize('view', Consumable::class);
         $rows = [];
 
-        $canConsume = Gate::allows('checkout', $consumable);
+        $canConsume = ! $consumable->usesStockLots() && Gate::allows('checkout', $consumable);
 
         foreach ($consumable->consumableAssignments as $consumable_assignment) {
             $rows[] = [
@@ -476,6 +480,11 @@ class ConsumablesController extends Controller
         }
 
         $this->authorize('checkout', $consumable);
+
+        if ($consumable->usesStockLots()) {
+            return response()->json(Helper::formatStandardApiResponse('error', null,
+                trans('consumable_stock.errors.use_stock')), 409);
+        }
 
         $consumable->checkout_qty = $request->input('checkout_qty', 1);
 
@@ -530,7 +539,7 @@ class ConsumablesController extends Controller
         DB::transaction(function () use ($consumable, $request, $user, &$errorResponse): void {
             $locked = Consumable::whereKey($consumable->id)->lockForUpdate()->first();
 
-            if (! $locked || $locked->numRemaining() < $consumable->checkout_qty) {
+            if (! $locked || $locked->usesStockLots() || $locked->numRemaining() < $consumable->checkout_qty) {
                 $errorResponse = response()->json(Helper::formatStandardApiResponse('error', null, trans('admin/consumables/message.checkout.unavailable', [
                     'requested' => $consumable->checkout_qty,
                     'remaining' => $locked ? $locked->numRemaining() : 0,
@@ -645,6 +654,11 @@ class ConsumablesController extends Controller
     {
         $this->authorize('checkout', $consumable);
 
+        if ($consumable->usesStockLots()) {
+            return response()->json(Helper::formatStandardApiResponse('error', null,
+                trans('consumable_stock.errors.use_stock')), 409);
+        }
+
         if ($assignment->consumable_id !== $consumable->id) {
             return response()->json(Helper::formatStandardApiResponse('error', null, trans('admin/consumables/message.does_not_exist')), 404);
         }
@@ -691,6 +705,11 @@ class ConsumablesController extends Controller
 
         $consumable = $assignments->first()->consumable;
         $this->authorize('checkout', $consumable);
+
+        if ($consumable->usesStockLots()) {
+            return response()->json(Helper::formatStandardApiResponse('error', null,
+                trans('consumable_stock.errors.use_stock')), 409);
+        }
 
         $now = now();
         $consumed = 0;

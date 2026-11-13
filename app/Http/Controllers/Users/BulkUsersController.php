@@ -481,7 +481,11 @@ class BulkUsersController extends Controller
         $scopedConsumableRowIds = $consumableUserRows
             ->whereIn('consumable_id', $scopedConsumableIds)
             ->pluck('id');
-        ConsumableAssignment::whereIn('id', $scopedConsumableRowIds)->delete();
+        $assignmentsToRemove = ConsumableAssignment::whereIn('id', $scopedConsumableRowIds);
+        if (\Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')) {
+            $assignmentsToRemove->whereNotIn('consumable_id', \App\Models\ConsumableStockProduct::select('consumable_id'));
+        }
+        $assignmentsToRemove->delete();
 
         // Delete only the pivot rows we already permission-checked and
         // audit-logged.
@@ -491,7 +495,7 @@ class BulkUsersController extends Controller
         $scopedAcceptanceIds = CheckoutAcceptance::pending()
             ->whereIn('assigned_to_id', $user_raw_array)
             ->get(['id', 'checkoutable_type', 'checkoutable_id'])
-            ->filter(fn($acceptance) => match ($acceptance->checkoutable_type) {
+            ->filter(fn ($acceptance) => match ($acceptance->checkoutable_type) {
                 Asset::class => $assets->pluck('id')->contains($acceptance->checkoutable_id),
                 Accessory::class => $scopedAccessoryUserRows->pluck('accessory_id')->contains($acceptance->checkoutable_id),
                 LicenseSeat::class => $scopedLicenseSeats->pluck('id')->contains($acceptance->checkoutable_id),
@@ -655,13 +659,13 @@ class BulkUsersController extends Controller
                 DB::table('company_user')
                     ->where('user_id', $user_to_merge->id)
                     ->pluck('company_id')
-                    ->map(fn($id) => (int) $id)
+                    ->map(fn ($id) => (int) $id)
                     ->all()
             );
             if (! empty($mergedCompanyIds)) {
                 $now = now();
                 DB::table('company_user')->insertOrIgnore(
-                    array_map(fn($companyId) => [
+                    array_map(fn ($companyId) => [
                         'company_id' => $companyId,
                         'user_id' => $merge_into_user->id,
                         'created_at' => $now,

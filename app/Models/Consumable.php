@@ -35,7 +35,7 @@ class Consumable extends SnipeModel
     protected $presenter = ConsumablePresenter::class;
 
     use Acceptable;
-    use AdjustsQuantity;
+    use AdjustsQuantity { adjustQuantity as protected adjustNativeQuantity; }
     use CompanyableTrait;
     use HasOrders;
     use HasUploads;
@@ -241,7 +241,7 @@ class Consumable extends SnipeModel
 
     public function isDeletable()
     {
-        return Gate::allows('delete', $this)
+        return ! $this->usesStockLots() && Gate::allows('delete', $this)
             && ($this->numOutstanding() === 0)
             && ($this->deleted_at == '');
     }
@@ -498,6 +498,10 @@ class Consumable extends SnipeModel
      */
     public function numInPlay(): int
     {
+        if ($this->usesStockLots()) {
+            return $this->numRemaining();
+        }
+
         return (int) $this->qty - $this->numConsumed();
     }
 
@@ -522,6 +526,19 @@ class Consumable extends SnipeModel
      */
     public function numRemaining()
     {
+        if ($this->usesStockLots()) {
+            $product = ConsumableStockProduct::find($this->id);
+
+            return (int) ConsumableStockBalance::whereHas('lot', function ($query) use ($product) {
+                $query->where('consumable_id', $this->id)->where('unidentified', false)->where('quarantined', false)
+                    ->where(function ($date) use ($product) {
+                        $date->whereDate('expires_on', '>=', today());
+                        if (! $product->expiry_required) {
+                            $date->orWhereNull('expires_on');
+                        }
+                    });
+            })->sum('quantity');
+        }
         $checkedout = $this->numCheckedOut();
         $total = $this->qty;
         $remaining = $total - $checkedout;
@@ -567,6 +584,61 @@ class Consumable extends SnipeModel
     public function setQtyAttribute($value)
     {
         $this->attributes['qty'] = (! $value) ? 0 : intval($value);
+    }
+
+    public function usesStockLots(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')
+            && ConsumableStockProduct::whereKey($this->id)->exists();
+    }
+
+    /**
+     * Serialize legacy writes with lot activation. Ledger movements update their
+     * projection directly under this same parent lock.
+     */
+    public function save(array $options = [])
+    {
+        if (! $this->exists) {
+            return parent::save($options);
+        }
+
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($options) {
+            $locked = static::withTrashed()->whereKey($this->id)->lockForUpdate()->first();
+            if ($locked?->usesStockLots() && $this->isDirty(['qty', 'company_id', 'archived'])) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'qty' => trans('consumable_stock.errors.use_stock'),
+                ]);
+            }
+
+            return parent::save($options);
+        });
+    }
+
+    public function delete()
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () {
+            $locked = static::withTrashed()->whereKey($this->id)->lockForUpdate()->first();
+            if ($locked?->usesStockLots()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'stock' => trans('consumable_stock.errors.delete_tracked'),
+                ]);
+            }
+
+            return parent::delete();
+        });
+    }
+
+    public function adjustQuantity(int $delta, string $note, ?int $orderItemId = null, ?string $filename = null): void
+    {
+        \Illuminate\Support\Facades\DB::transaction(function () use ($delta, $note, $orderItemId, $filename) {
+            $locked = static::whereKey($this->id)->lockForUpdate()->firstOrFail();
+            if ($locked->usesStockLots()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'stock' => trans('consumable_stock.errors.use_stock'),
+                ]);
+            }
+            $this->adjustNativeQuantity($delta, $note, $orderItemId, $filename);
+        });
     }
 
     public function newEloquentBuilder($query): ConsumableQueryBuilder
