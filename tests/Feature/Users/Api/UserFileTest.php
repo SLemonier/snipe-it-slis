@@ -131,7 +131,7 @@ class UserFileTest extends TestCase
         // List the files to get the file ID
         $result = $this->actingAsForApi($admin)
             ->getJson(
-                route('api.files.index', ['object_type' => 'users', 'id' => $user->id])
+                route('api.files.index', ['object_type' => 'users', 'id' => $user->id, 'sort' => 'id', 'order' => 'asc'])
             )
             ->assertOk()
             ->assertJsonStructure(
