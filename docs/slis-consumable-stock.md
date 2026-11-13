@@ -19,7 +19,7 @@ Lors d’une nouvelle installation, le module est désactivé ; chaque produit s
 Lors d’une mise à niveau depuis notre 8.1.18, les réglages, activations et tables existants sont conservés. La migration du module garde son identité et ne se rejoue pas.
 Les migrations amont de recalcul de quantité excluent les produits suivis par lots : leur registre reste la source de vérité.
 
-Pour les produits non activés, les fonctionnalités et API historiques restent disponibles.
+Pour les produits non activés, le comportement natif de Snipe-IT 8.8.3 reste disponible.
 L’activation conserve la fiche produit, ses identifiants, ses distributions et ses journaux.
 Elle crée un stock initial **à identifier**, égal à la quantité totale historique moins le nombre de distributions.
 Aucune date n’est inventée. Identifier ce stock le répartit dans les vrais lots, sans enregistrer de nouvelle réception.

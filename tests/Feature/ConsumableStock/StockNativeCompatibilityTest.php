@@ -157,4 +157,36 @@ class StockNativeCompatibilityTest extends TestCase
         $this->getJson(route('api.consumables.stock.show', [$this->item, 'offset' => 1, 'limit' => 1]))
             ->assertOk()->assertJsonCount(0, 'payload.history');
     }
+
+    public function test_global_minimum_counts_vehicle_stock_and_excludes_expired_and_quarantined_lots(): void
+    {
+        $this->settings->set(['alert_threshold' => 0]);
+        $vehicle = ConsumableStockPlace::create(['name' => 'VSAV', 'kind' => 'vehicle']);
+        $bag = ConsumableStockPlace::create(['name' => 'Bag', 'kind' => 'bag', 'parent_id' => $vehicle->id]);
+        $stock = app(ConsumableStock::class);
+        foreach ([
+            ['number' => 'USABLE', 'expires_on' => '2099-01-01', 'quantity' => 2],
+            ['number' => 'EXPIRED', 'expires_on' => '2020-01-01', 'quantity' => 20],
+            ['number' => 'QUARANTINED', 'expires_on' => '2099-01-01', 'quantity' => 30],
+        ] as $lot) {
+            $stock->execute($this->item->fresh(), array_merge([
+                'action' => 'receive', 'operation_id' => (string) Str::uuid(),
+                'note' => 'Vehicle delivery', 'to_place_id' => $bag->id,
+            ], $lot));
+        }
+        $quarantined = \App\Models\ConsumableStockLot::where('number', 'QUARANTINED')->firstOrFail();
+        $stock->execute($this->item->fresh(), [
+            'action' => 'quarantine', 'operation_id' => (string) Str::uuid(),
+            'note' => 'Product recall', 'lot_id' => $quarantined->id, 'quarantined' => true,
+        ]);
+        $row = collect(Helper::checkLowInventory())->where('type', 'consumables')->firstWhere('id', $this->item->id);
+        $this->assertNotNull($row);
+        $this->assertSame(2, $row['remaining']);
+
+        $stock->execute($this->item->fresh(), [
+            'action' => 'receive', 'operation_id' => (string) Str::uuid(), 'note' => 'Top up',
+            'number' => 'USABLE', 'expires_on' => '2099-01-01', 'quantity' => 1, 'to_place_id' => $bag->id,
+        ]);
+        $this->assertNull(collect(Helper::checkLowInventory())->where('type', 'consumables')->firstWhere('id', $this->item->id));
+    }
 }
