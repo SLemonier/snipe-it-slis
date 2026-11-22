@@ -178,6 +178,11 @@ class Location extends SnipeModel
         });
     }
 
+    public function stockPlaces(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ConsumableStockPlace::class, 'location_id')->withoutGlobalScopes();
+    }
+
     public function hasStockLedger(): bool
     {
         return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_places')
@@ -198,7 +203,7 @@ class Location extends SnipeModel
     {
         return Gate::allows('delete', $this)
             && ($this->deleted_at == '')
-            && ! $this->hasStockLedger()
+            && ! ($this->stock_places_exists ?? $this->hasStockLedger())
             && (($this->assets_count ?? $this->assets()->count()) === 0)
             && (($this->assigned_assets_count ?? $this->assignedAssets()->count()) === 0)
             && (($this->accessories_count ?? $this->accessories()->count()) === 0)
