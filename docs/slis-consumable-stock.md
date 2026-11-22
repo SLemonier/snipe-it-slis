@@ -14,7 +14,7 @@ Le filtre par emplacement inclut ses descendants et compte chaque unité une seu
 
 ## Conservation des données et compatibilité
 
-La migration propre au module ajoute uniquement les tables `consumable_stock_*`. Elle ne modifie aucune table ni ligne existante.
+La migration initiale du module ajoute les tables `consumable_stock_*`. Les migrations d’intégration ultérieures relient les emplacements historiques aux lieux natifs et indexent les péremptions dans le calendrier, sans supprimer les quantités ni les historiques.
 Lors d’une nouvelle installation, le module est désactivé ; chaque produit s’active volontairement.
 Lors d’une mise à niveau depuis notre 8.1.18, les réglages, activations et tables existants sont conservés. La migration du module garde son identité et ne se rejoue pas.
 Les migrations amont de recalcul de quantité excluent les produits suivis par lots : leur registre reste la source de vérité.
@@ -40,8 +40,8 @@ Désactiver le module fige ses mouvements et alertes. Cela ne supprime rien et n
 ## Utilisation
 
 1. Dans **Administration → Notifications**, activer le module. Régler le délai avant péremption (jours) et l’intervalle des rappels.
-2. Depuis une fiche consommable, ouvrir **Lots et stocks de consommables**, puis **Emplacements de stock**.
-3. Créer la réserve, les véhicules et les sacs. Ils peuvent être associés à un matériel ou à un lieu existant.
+2. Ouvrir **Stocks et péremptions** dans le menu latéral, ou **Lots et stocks de consommables** depuis une fiche consommable.
+3. Sélectionner les lieux natifs existants. Si nécessaire, créer les véhicules et sacs dans **Lieux**, puis définir leur lieu parent. Aucun catalogue supplémentaire ni type de lieu n’est requis.
 4. Pour chaque produit inventorié, activer le suivi avec son unité de comptage et indiquer si une péremption est obligatoire.
 5. Identifier le stock initial dans ses lots réels, puis le répartir par transfert. Reprendre séparément les anciennes distributions encore présentes.
 6. Enregistrer les réceptions, transferts/retours, utilisations, retraits et corrections dans la page de stock.
@@ -111,7 +111,7 @@ Les réponses utilisent l’enveloppe Snipe-IT : **toujours vérifier `status`**
 | minimum | to_place_id, quantity (0 désactive le minimum) |
 
 Les mouvements nécessitent le droit de lecture et le droit de sortie pour transfer/consume ; les autres actions exigent le droit de modification.
-Les emplacements sont administrés par les superutilisateurs. Le cloisonnement par société existant s’applique.
+Les lieux sont administrés avec les permissions natives de Snipe-IT. Les anciens endpoints de gestion des emplacements restent réservés aux superutilisateurs pour compatibilité. Le cloisonnement par société existant s’applique.
 
 ## Validation et déploiement
 
