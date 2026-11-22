@@ -33,6 +33,7 @@ class CalendarEventsTransformer
      * @var array<string, string>
      */
     private const EVENT_TYPE_LABEL_KEYS = [
+        'consumable.expiration' => 'consumable_stock.calendar_expiry',
         'maintenance.start' => 'general.calendar_event_maintenance',
         'asset.audit_due' => 'general.calendar_event_asset_audit_due',
         'asset.expected_checkin' => 'general.calendar_event_asset_expected_checkin',

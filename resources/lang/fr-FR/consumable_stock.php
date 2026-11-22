@@ -1,6 +1,11 @@
 <?php
 
 return [
+    'activation_steps' => 'Étape 1 : choisissez l’emplacement du stock existant et activez le suivi. Étape 2 : identifiez le stock initial pour saisir chaque lot et sa péremption. La note ne remplace pas la date de péremption.',
+    'no_locations' => 'Aucun emplacement Snipe-IT compatible. Vérifiez les droits sur les emplacements et les réglages de société, ou créez un emplacement.',
+    'calendar_expiry' => 'Péremption d’un lot de consommable',
+    'next_expiry' => 'Prochaine péremption',
+    'menu' => 'Stocks et péremptions',
     'title' => 'Lots et stocks de consommables',
     'places' => 'Emplacements de stock',
     'place' => 'Emplacement',
@@ -63,7 +68,7 @@ return [
     'low' => 'Sous le minimum',
     'settings_changed' => 'Paramètres enregistrés',
     'all_places' => 'Tous les emplacements',
-    'includes_children' => 'Le filtre inclut le contenu des sacs rattachés à cet emplacement. Chaque unité est comptée une seule fois.',
+    'includes_children' => 'Le filtre inclut tous les emplacements enfants. Chaque unité est comptée une seule fois.',
     'actions' => [
         'enable' => 'Activer le suivi par lots',
         'receive' => 'Réceptionner',
@@ -82,6 +87,9 @@ return [
         'bag' => 'Sac',
     ],
     'errors' => [
+        'location_history' => 'Cet emplacement est lié à un registre de stock. Conservez-le pour préserver le stock et son historique.',
+        'location_used' => 'Cet emplacement est déjà lié au stock. Utilisez sa référence de stock existante.',
+        'ambiguous_location' => 'Choisissez un emplacement natif ou un ancien lieu de stock, pas les deux.',
         'archived' => 'Désarchivez ce consommable avant de gérer ses lots.',
         'invalid_reference' => 'La référence demandée est introuvable ou inaccessible.',
         'disabled' => 'Le module de stock est désactivé.',
@@ -89,7 +97,7 @@ return [
         'already_enabled' => 'Le suivi par lots est déjà activé.',
         'not_enabled' => 'Activez d’abord le suivi par lots.',
         'legacy_changed' => 'La quantité ou le nombre de distributions historiques a changé en dehors du suivi par lots. Les mouvements sont bloqués jusqu’au rapprochement. Aucune donnée n’a été supprimée.',
-        'company' => 'Le produit et l’emplacement doivent appartenir à la même société.',
+        'company' => 'Cet emplacement n’est pas compatible avec ce produit selon les réglages de société de Snipe-IT.',
         'place_company' => 'La société d’un emplacement de stock ne peut pas changer. Créez un autre emplacement.',
         'cycle' => 'Un emplacement ne peut pas contenir lui-même ou l’un de ses parents.',
         'same_place' => 'Les emplacements de départ et d’arrivée doivent être différents.',

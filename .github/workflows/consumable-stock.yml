@@ -82,7 +82,7 @@ jobs:
           git diff --name-only --diff-filter=AM 621e30486a59304f2a5288fb62c4aa91b08e0a84 -- '*.php' | while IFS= read -r file; do php -l "$file" || exit 1; done
           php artisan view:cache
       - name: Stock and native consumable regression tests
-        run: php artisan test --compact tests/Feature/ConsumableStock tests/Feature/Consumables tests/Feature/Checkouts/Api/ConsumableCheckoutTest.php tests/Feature/Checkouts/Ui/ConsumableCheckoutTest.php tests/Feature/PredefinedKits tests/Feature/Settings/AlertsSettingTest.php tests/Feature/Console/Commands/PurgeTest.php tests/Feature/Users/Ui/BulkActions/BulkCheckinConsumableFmcsTest.php tests/Feature/Helpers/CheckLowInventoryTest.php tests/Feature/InventoryAdjust/AdjustQuantityRaceConditionTest.php tests/Unit/ConsumableTest.php tests/Unit/Models/Consumable
+        run: php artisan test --compact tests/Feature/ConsumableStock tests/Feature/CalendarEvents tests/Feature/Locations tests/Feature/Consumables tests/Feature/Checkouts/Api/ConsumableCheckoutTest.php tests/Feature/Checkouts/Ui/ConsumableCheckoutTest.php tests/Feature/PredefinedKits tests/Feature/Settings/AlertsSettingTest.php tests/Feature/Console/Commands/PurgeTest.php tests/Feature/Users/Ui/BulkActions/BulkCheckinConsumableFmcsTest.php tests/Feature/Helpers/CheckLowInventoryTest.php tests/Feature/InventoryAdjust/AdjustQuantityRaceConditionTest.php tests/Unit/ConsumableTest.php tests/Unit/Models/Consumable
 
   formatting:
     name: Format changed PHP

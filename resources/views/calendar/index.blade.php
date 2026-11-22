@@ -57,6 +57,11 @@
                      vocabulary ("License expires", "Employment end")
                      to users whose role doesn't touch those objects. --}}
                 filterButtons: [
+                    @can('view', \App\Models\Consumable::class)
+                        @if(\App\Models\ConsumableStockSetting::current()->enabled)
+                            { name: 'consumable.expiration', text: @json(trans('consumable_stock.calendar_expiry')) },
+                        @endif
+                    @endcan
                     @can('view', \App\Models\Asset::class)
                         {
                             name: 'maintenance.start',

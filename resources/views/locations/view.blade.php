@@ -16,6 +16,11 @@
 
 {{-- Page content --}}
 @section('content')
+@can('view', \App\Models\Consumable::class)
+    @if(\Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products') && \App\Models\ConsumableStockSetting::current()->enabled)
+        <p><a class="btn btn-default" href="{{ route('consumables.stock.index', ['location_id' => $location->id]) }}">{{ trans('consumable_stock.menu') }}</a></p>
+    @endif
+@endcan
     <x-container columns="2">
 
         @if ($location->deleted_at!='')

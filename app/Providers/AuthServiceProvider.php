@@ -71,6 +71,7 @@ class AuthServiceProvider extends ServiceProvider
         CheckoutRequest::class => CheckoutRequestPolicy::class,
         Component::class => ComponentPolicy::class,
         Consumable::class => ConsumablePolicy::class,
+        \App\Models\ConsumableStockLot::class => \App\Policies\ConsumableStockLotPolicy::class,
         CustomField::class => CustomFieldPolicy::class,
         CustomFieldset::class => CustomFieldsetPolicy::class,
         Department::class => DepartmentPolicy::class,

@@ -133,6 +133,11 @@ class Location extends SnipeModel
      */
     protected static function booted(): void
     {
+        static::deleting(function (self $location) {
+            if ($location->hasStockLedger()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['location' => trans('consumable_stock.errors.location_history')]);
+            }
+        });
         static::forceDeleted(function (self $location) {
             if ($location->image) {
                 try {
@@ -167,10 +172,17 @@ class Location extends SnipeModel
      *
      * @return bool
      */
+    public function hasStockLedger(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_places')
+            && ConsumableStockPlace::withoutGlobalScopes()->where('location_id', $this->id)->exists();
+    }
+
     public function isDeletable()
     {
         return Gate::allows('delete', $this)
             && ($this->deleted_at == '')
+            && ! $this->hasStockLedger()
             && (($this->assets_count ?? $this->assets()->count()) === 0)
             && (($this->assigned_assets_count ?? $this->assignedAssets()->count()) === 0)
             && (($this->accessories_count ?? $this->accessories()->count()) === 0)

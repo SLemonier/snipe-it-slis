@@ -7,6 +7,20 @@ namespace App\Presenters;
  */
 class ConsumablePresenter extends Presenter
 {
+    public function stockExpirySummary(): array
+    {
+        $lots = \App\Models\ConsumableStockLot::where('consumable_id', $this->model->id)
+            ->whereHas('balances', fn ($q) => $q->where('quantity', '>', 0))
+            ->withSum('balances', 'quantity')->orderByRaw('expires_on IS NULL')->orderBy('expires_on')->get();
+
+        return [
+            'lots' => $lots,
+            'next' => $lots->first(fn ($lot) => $lot->expires_on && ! $lot->expires_on->lt(today()))?->expires_on,
+            'expired' => $lots->filter(fn ($lot) => $lot->expires_on && $lot->expires_on->lt(today()))->sum('balances_sum_quantity'),
+            'unknown' => $lots->filter(fn ($lot) => $lot->unidentified || $lot->expires_on === null)->sum('balances_sum_quantity'),
+        ];
+    }
+
     /**
      * JSON column layout for bootstrap-table.
      *

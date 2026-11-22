@@ -11,6 +11,16 @@ class ConsumableStockRequest extends Request
         return auth()->check();
     }
 
+    public function attributes(): array
+    {
+        return [
+            'from_place_id' => trans('consumable_stock.from'),
+            'to_place_id' => trans('consumable_stock.to'),
+            'from_location_id' => trans('consumable_stock.from'),
+            'to_location_id' => trans('consumable_stock.to'),
+        ];
+    }
+
     public function rules(): array
     {
         $action = $this->input('action');
@@ -31,8 +41,10 @@ class ConsumableStockRequest extends Request
                 'nullable', 'integer', $action === 'adjust' ? 'between:-99999,99999' : ($action === 'minimum' ? 'between:0,99999' : 'between:1,99999'),
                 $action === 'adjust' ? 'not_in:0' : 'not_in:-1',
             ],
-            'from_place_id' => [Rule::requiredIf($from), 'nullable', 'integer'],
-            'to_place_id' => [Rule::requiredIf($to), 'nullable', 'integer'],
+            'from_place_id' => [Rule::requiredIf($from && ! $this->filled('from_location_id')), 'nullable', 'integer', 'prohibits:from_location_id'],
+            'from_location_id' => ['nullable', 'integer', 'prohibits:from_place_id'],
+            'to_place_id' => [Rule::requiredIf($to && ! $this->filled('to_location_id')), 'nullable', 'integer', 'prohibits:to_location_id'],
+            'to_location_id' => ['nullable', 'integer', 'prohibits:to_place_id'],
             'lot_id' => [Rule::requiredIf(in_array($action, ['identify', 'withdraw', 'quarantine', 'amend_lot']) || $negativeAdjustment), 'nullable', 'integer'],
             'number' => [Rule::requiredIf($inbound || $action === 'amend_lot'), 'nullable', 'string', 'max:191'],
             'expires_on' => 'nullable|date_format:Y-m-d',
