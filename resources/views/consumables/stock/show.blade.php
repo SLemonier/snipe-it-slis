@@ -156,8 +156,8 @@
                 <tr><td>{{ $operation->created_at }}</td><td>{{ trans('consumable_stock.actions.'.$operation->action) }}</td><td>{{ $operation->actor?->present()->fullName }}</td><td>{{ $operation->note }}</td>
                     <td>@foreach($operation->movements as $movement)
                         <div>{{ $movement->lot?->number }}: {{ $movement->quantity }} {{ $snapshot['unit'] }}
-                            {{ $places->firstWhere('id', $movement->from_place_id)?->name }}
-                            → {{ $places->firstWhere('id', $movement->to_place_id)?->name }}
+                            {{ $places->firstWhere('id', $movement->from_place_id)?->displayPath() }}
+                            → {{ $places->firstWhere('id', $movement->to_place_id)?->displayPath() }}
                         </div>
                     @endforeach
                     @if($operation->action === 'amend_lot')
@@ -168,7 +168,7 @@
                             {{ trans('general.'.($operation->details['previous_quarantined'] ? 'yes' : 'no')) }}
                             → {{ trans('general.'.($operation->details['quarantined'] ? 'yes' : 'no')) }}</div>
                     @elseif($operation->action === 'minimum')
-                        <div>{{ $places->firstWhere('id', $operation->details['to_place_id'])?->name }}:
+                        <div>{{ $places->firstWhere('id', $operation->details['to_place_id'])?->displayPath() }}:
                             {{ trans('consumable_stock.minimum') }} {{ $operation->details['quantity'] }} {{ $snapshot['unit'] }}</div>
                     @endif
                     @if(!empty($operation->details['reference']))

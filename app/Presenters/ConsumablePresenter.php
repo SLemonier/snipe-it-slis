@@ -15,6 +15,7 @@ class ConsumablePresenter extends Presenter
 
         return [
             'lots' => $lots,
+            'required' => \App\Models\ConsumableStockProduct::find($this->model->id)?->expiry_required ?? true,
             'next' => $lots->first(fn ($lot) => $lot->expires_on && ! $lot->expires_on->lt(today()))?->expires_on,
             'expired' => $lots->filter(fn ($lot) => $lot->expires_on && $lot->expires_on->lt(today()))->sum('balances_sum_quantity'),
             'unknown' => $lots->filter(fn ($lot) => $lot->unidentified || $lot->expires_on === null)->sum('balances_sum_quantity'),
@@ -28,9 +29,9 @@ class ConsumablePresenter extends Presenter
      *                               by default. Passed from the Deleted-index view so admins
      *                               see when each row was deleted. Still switchable elsewhere.
      * @param  array<int, string>  $hide_fields  Column `field` names to drop
-     *                               from the layout entirely. The Archived and Deleted index
-     *                               views hide `remaining` + `percent_remaining` here because
-     *                               neither applies to retired or soft-deleted rows.
+     *                                           from the layout entirely. The Archived and Deleted index
+     *                                           views hide `remaining` + `percent_remaining` here because
+     *                                           neither applies to retired or soft-deleted rows.
      * @return string
      */
     public static function dataTableLayout(bool $showDeletedAt = false, array $hide_fields = [])

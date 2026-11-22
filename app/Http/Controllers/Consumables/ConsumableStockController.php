@@ -7,12 +7,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ConsumableStockPlaceRequest;
 use App\Http\Requests\ConsumableStockRequest;
 use App\Http\Transformers\ConsumableStockTransformer;
-use App\Models\Location;
 use App\Models\Consumable;
 use App\Models\ConsumableStockOperation;
 use App\Models\ConsumableStockPlace;
 use App\Models\ConsumableStockProduct;
 use App\Models\ConsumableStockSetting;
+use App\Models\Location;
 use App\Services\ConsumableStock;
 use Illuminate\Http\Request;
 
@@ -96,7 +96,14 @@ class ConsumableStockController extends Controller
             ]));
         }
         $history = $historyQuery->paginate(30);
-        $places = ConsumableStockPlace::with('location.parent')->orderBy('name')->get();
+        $placeIds = collect($snapshot['balances'])->pluck('place_id')
+            ->merge(collect($snapshot['minimums'])->pluck('place_id'));
+        foreach ($history as $operation) {
+            $placeIds = $placeIds->merge($operation->movements->pluck('from_place_id'))
+                ->merge($operation->movements->pluck('to_place_id'));
+        }
+        $places = ConsumableStockPlace::withoutGlobalScopes()->whereIn('id', $placeIds->filter()->unique())
+            ->with('location.parent')->orderBy('name')->get();
         $locations = Location::with('parent')->orderBy('name')->get()
             ->filter(fn (Location $location) => $consumable->canCheckoutTo($location));
         $module = ConsumableStockSetting::current();
@@ -123,6 +130,7 @@ class ConsumableStockController extends Controller
         if ($request->is('api/*')) {
             return response()->json(Helper::formatStandardApiResponse('success', $places->map(fn ($place) => (new ConsumableStockTransformer)->place($place))->all()));
         }
+
         return redirect()->route('locations.index');
     }
 

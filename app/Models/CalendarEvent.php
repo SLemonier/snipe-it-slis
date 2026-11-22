@@ -88,7 +88,7 @@ class CalendarEvent extends Model
     {
         static $cache = null;
         if ($cache !== null) {
-            return static::installedSources($cache);
+            return self::installedSources($cache);
         }
 
         $sources = [];
@@ -112,6 +112,6 @@ class CalendarEvent extends Model
 
         $cache = $sources;
 
-        return static::installedSources($cache);
+        return self::installedSources($cache);
     }
 }

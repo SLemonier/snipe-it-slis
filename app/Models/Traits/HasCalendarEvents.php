@@ -105,7 +105,7 @@ trait HasCalendarEvents
     protected static function registerRestoredIfSoftDeletes(): void
     {
         if (in_array(SoftDeletes::class, class_uses_recursive(static::class), true)) {
-            static::restored(function ($model) {
+            static::registerModelEvent('restored', function ($model) {
                 // Undelete any calendar_events rows this source
                 // published before its own soft-delete. Query-builder
                 // restore (not Model::restore) so no cascade of
@@ -157,7 +157,7 @@ trait HasCalendarEvents
         // the matching rows when the source was soft-deleted, and the
         // restored observer re-syncs on restore, so leaving this
         // branch dark on trashed() is safe. See issue #19760.
-        if (in_array(SoftDeletes::class, class_uses_recursive($this), true) && $this->trashed()) {
+        if (method_exists($this, 'trashed') && $this->trashed()) {
             return;
         }
 

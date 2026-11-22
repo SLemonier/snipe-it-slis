@@ -46,10 +46,11 @@ class ConsumableStock
                     $location = Location::whereKey($data[$direction.'_location_id'])->lockForUpdate()->first();
                     $this->check($location !== null, 'invalid_reference');
                     $this->check($locked->canCheckoutTo($location), 'company');
-                    $place = Place::withoutGlobalScopes()->firstOrCreate(
-                        ['location_id' => $location->id],
-                        ['name' => $location->name, 'kind' => 'reserve', 'company_id' => $location->company_id]
-                    );
+                    $place = Place::withoutGlobalScopes()->where('location_id', $location->id)->lockForUpdate()->first();
+                    if (! $place) {
+                        $place = Place::create(['location_id' => $location->id,
+                            'name' => $location->name, 'kind' => 'reserve', 'company_id' => $location->company_id]);
+                    }
                     $data[$direction.'_place_id'] = $place->id;
                 }
             }

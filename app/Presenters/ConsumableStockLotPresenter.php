@@ -11,7 +11,7 @@ class ConsumableStockLotPresenter extends Presenter
 
     public function name(): string
     {
-        return ($this->lot->consumable?->name ?? '').' — '.$this->lot->number;
+        return ($this->lot->consumable->name ?? '').' — '.$this->lot->number;
     }
 
     public function calendarUrl(): string

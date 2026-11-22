@@ -144,3 +144,13 @@ Après activation, **ne pas simplement remettre l’ancienne image** : elle igno
 Désactiver le module pour figer les écritures, conserver toutes les tables et utiliser une version corrigée comprenant le module.
 Un retour au fonctionnement ancien exige une réconciliation explicite et testée des mouvements effectués depuis la bascule.
 Ne pas restaurer le snapshot antérieur par-dessus les opérations nouvelles : cela les perdrait.
+
+## Native location and calendar integration
+
+The stock interface now selects the existing Snipe-IT Locations tree. There is no separate stock-location catalogue to maintain and no mandatory reserve/vehicle/bag classification. Create and move bags using native parent locations. The sidebar entry “Stocks and expirations” opens tracked stock; native location pages link to their contained stock.
+
+The additive location migration preserves ledger IDs, balances, operations and movement history. Existing explicit location links are retained. Unlinked places reuse an unambiguous native location with the same name, company and mapped parent, or create one. Duplicate legacy links receive distinct locations rather than merging stock silently. Review the resulting hierarchy on a production copy before deployment. Existing native location records are not renamed or reparented by this migration. Rollback does not delete the new native records or ledger links.
+
+API clients may keep using `from_place_id` / `to_place_id`. New clients can send `from_location_id` / `to_location_id` with native Snipe-IT location IDs. Do not send both identifiers for one direction. A stock-place ID is not a location ID. Native location selection and posting use `canCheckoutTo` and native visibility rules. A location linked to a ledger cannot be deleted or moved to a different effective company; moving a bag within its company preserves its stock and history.
+
+Consumable records show upcoming expiry, expired quantities and lots still present. Expiry remains per lot. The native calendar indexes dated lots and shows only identified lots with physical stock while the module is enabled, including quarantined lots; depleted lots disappear from results and counts. Existing dated lots are indexed by an additive migration. The calendar is informational; scheduled email alerts and their configurable lead time remain unchanged.

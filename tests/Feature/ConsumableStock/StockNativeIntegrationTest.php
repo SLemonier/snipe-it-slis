@@ -74,7 +74,7 @@ class StockNativeIntegrationTest extends TestCase
     public function test_company_restrictions_apply_to_native_location_ids(): void
     {
         $this->settings->enableMultipleFullCompanySupport();
-        $this->settings->update(['scope_locations_fmcs' => 1, 'null_company_is_floater' => 0]);
+        $this->settings->enableScopedLocationsWithFullMultipleCompanySupport()->disableFloaterMode();
         [$a, $b] = Company::factory()->count(2)->create();
         $this->item->update(['company_id' => $a->id]);
         $this->location->company_id = $b->id;
@@ -113,7 +113,7 @@ class StockNativeIntegrationTest extends TestCase
 
     public function test_location_migration_preserves_ids_balances_history_and_existing_native_places(): void
     {
-        $native = $this->location->getAttributes();
+        $native = $this->location->fresh()->getAttributes();
         $vehicle = Place::create(['name' => 'Vehicle', 'kind' => 'vehicle']);
         $bag = Place::create(['name' => 'Bag', 'kind' => 'bag', 'parent_id' => $vehicle->id]);
         $linked = Place::create(['name' => 'Legacy label', 'kind' => 'reserve', 'location_id' => $this->location->id]);
@@ -153,11 +153,11 @@ class StockNativeIntegrationTest extends TestCase
             'lot_id' => $lot->id, 'number' => 'NATIVE-LOT', 'expires_on' => $newDate,
         ]));
         $this->getJson($url)->assertJsonPath('events.0.start', $newDate);
-        $this->get(route('consumables.show', $this->item))->assertOk()->assertSee('NATIVE-LOT')->assertSee(trans('consumable_stock.next_expiry'));
+        $this->actingAs($this->admin, 'web')->get(route('consumables.show', $this->item))->assertOk()->assertSee('NATIVE-LOT')->assertSee(trans('consumable_stock.next_expiry'));
         app(ConsumableStock::class)->execute($this->item->fresh(), $this->operation('consume', [
             'from_location_id' => $this->location->id, 'quantity' => 3,
         ]));
-        $this->getJson($url)->assertJsonCount(0, 'events')->assertJsonPath('total', 0);
+        $this->actingAsForApi($this->admin)->getJson($url)->assertJsonCount(0, 'events')->assertJsonPath('total', 0);
         $this->assertDatabaseHas('consumable_stock_lots', ['id' => $lot->id]);
     }
 
