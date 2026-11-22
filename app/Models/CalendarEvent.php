@@ -102,6 +102,7 @@ class CalendarEvent extends Model
 
         return self::installedSources($cache);
     }
+
     /** @param array<int, class-string> $sources
      * @return array<int, class-string>
      */
@@ -113,5 +114,4 @@ class CalendarEvent extends Model
 
         return $sources;
     }
-
 }

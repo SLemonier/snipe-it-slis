@@ -236,10 +236,10 @@ class ConsumableStock
             }
             $before = $place->exists ? $place->getAttributes() : null;
             $data['kind'] ??= $place->kind ?? 'reserve';
-            $location = $place->location_id ? Location::findOrFail($place->location_id) : null;
+            $location = $place->location_id ? Location::whereKey($place->location_id)->lockForUpdate()->firstOrFail() : null;
             if (! $location && ! empty($data['location_id'])) {
-                $location = Location::findOrFail($data['location_id']);
-                $this->check(! Place::withoutGlobalScopes()->where('location_id', $location->id)->exists(), 'location_used');
+                $location = Location::whereKey($data['location_id'])->lockForUpdate()->firstOrFail();
+                $this->check(Place::withoutGlobalScopes()->where('location_id', $location->id)->lockForUpdate()->first() === null, 'location_used');
             } elseif (! $location) {
                 $location = new Location;
             }
