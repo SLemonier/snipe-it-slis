@@ -28,7 +28,7 @@ class ConsumableStockTransformer
     public function place(ConsumableStockPlace $place): array
     {
         return [
-            'id' => $place->id, 'name' => $place->location?->name ?? $place->name, 'path' => $place->displayPath(),
+            'id' => $place->id, 'name' => $place->location->name ?? $place->name, 'path' => $place->displayPath(),
             'kind' => $place->kind, 'parent_id' => $place->parent_id,
             'company_id' => $place->company_id, 'asset_id' => $place->asset_id, 'location_id' => $place->location_id,
         ];

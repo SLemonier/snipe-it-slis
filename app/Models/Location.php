@@ -178,6 +178,12 @@ class Location extends SnipeModel
         });
     }
 
+    public function hasStockLedger(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_places')
+            && ConsumableStockPlace::withoutGlobalScopes()->where('location_id', $this->id)->exists();
+    }
+
     /**
      * Determine whether or not this location can be deleted.
      *
@@ -188,12 +194,6 @@ class Location extends SnipeModel
      *
      * @since  [v3.0]
      */
-    public function hasStockLedger(): bool
-    {
-        return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_places')
-            && ConsumableStockPlace::withoutGlobalScopes()->where('location_id', $this->id)->exists();
-    }
-
     public function isDeletable()
     {
         return Gate::allows('delete', $this)

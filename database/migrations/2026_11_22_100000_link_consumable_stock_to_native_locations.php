@@ -33,7 +33,8 @@ return new class extends Migration
                         ->where('parent_id', $parentId)
                         ->whereNotIn('id', array_values($mapped))
                         ->whereNotIn('id', $places->whereNotNull('location_id')->pluck('location_id'));
-                    $location = $query->first();
+                    $matches = $query->limit(2)->get();
+                    $location = $matches->count() === 1 ? $matches->first() : null;
                 }
                 if (! $location) {
                     $name = $place->name;

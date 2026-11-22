@@ -15,7 +15,7 @@ class ConsumablePresenter extends Presenter
 
         return [
             'lots' => $lots,
-            'required' => \App\Models\ConsumableStockProduct::find($this->model->id)?->expiry_required ?? true,
+            'required' => \App\Models\ConsumableStockProduct::find($this->model->id)->expiry_required ?? true,
             'next' => $lots->first(fn ($lot) => $lot->expires_on && ! $lot->expires_on->lt(today()))?->expires_on,
             'expired' => $lots->filter(fn ($lot) => $lot->expires_on && $lot->expires_on->lt(today()))->sum('balances_sum_quantity'),
             'unknown' => $lots->filter(fn ($lot) => $lot->unidentified || $lot->expires_on === null)->sum('balances_sum_quantity'),

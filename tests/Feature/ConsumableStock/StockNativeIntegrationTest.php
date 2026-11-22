@@ -79,7 +79,7 @@ class StockNativeIntegrationTest extends TestCase
         $this->item->update(['company_id' => $a->id]);
         $this->location->company_id = $b->id;
         $this->location->saveOrFail();
-        $user = User::factory()->viewConsumables()->editConsumables()->for($a)->create();
+        $user = User::factory()->viewConsumables()->editConsumables()->forCompany($a)->create();
         $this->actingAs($user);
         $this->get(route('consumables.stock.show', $this->item))->assertOk()->assertDontSee('Reserve native');
         $this->post(route('consumables.stock.store', $this->item), $this->operation('enable', [
@@ -189,6 +189,51 @@ class StockNativeIntegrationTest extends TestCase
         $this->assertFalse($this->location->fresh()->isDeletable());
         $this->expectException(ValidationException::class);
         $this->location->delete();
+    }
+
+    public function test_calendar_does_not_leak_lots_from_another_company_in_counts(): void
+    {
+        $this->settings->enableMultipleFullCompanySupport();
+        [$a, $b] = Company::factory()->count(2)->create();
+        $this->item->update(['company_id' => $a->id]);
+        $this->location->update(['company_id' => $a->id]);
+        $this->enable();
+        $this->receive();
+        $url = route('api.calendar.events', ['event_type' => 'consumable.expiration', 'limit' => 1]);
+        $this->actingAsForApi(User::factory()->viewConsumables()->forCompany($b)->create())->getJson($url)
+            ->assertOk()->assertJsonCount(0, 'events')->assertJsonPath('total', 0)->assertJsonPath('truncated', false);
+    }
+
+    public function test_changing_the_effective_company_cannot_strand_stock_in_a_child_bag(): void
+    {
+        $this->enable();
+        $bag = Location::factory()->create(['parent_id' => $this->location->id, 'company_id' => null]);
+        app(ConsumableStock::class)->execute($this->item->fresh(), $this->operation('receive', [
+            'number' => 'BAG', 'quantity' => 2, 'expires_on' => '2099-01-01', 'to_location_id' => $bag->id,
+        ]));
+        $before = Balance::orderBy('id')->get()->toJson();
+        try {
+            $this->location->company_id = Company::factory()->create()->id;
+            $this->location->save();
+            $this->fail('The company of a location containing tracked stock must stay stable.');
+        } catch (ValidationException $e) {
+            $this->assertNull($this->location->fresh()->company_id);
+            $this->assertSame($before, Balance::orderBy('id')->get()->toJson());
+        }
+    }
+
+    public function test_migration_keeps_duplicate_legacy_links_separate(): void
+    {
+        $first = Place::create(['name' => 'First stock', 'kind' => 'reserve', 'location_id' => $this->location->id]);
+        $second = Place::create(['name' => 'Second stock', 'kind' => 'bag', 'location_id' => $this->location->id]);
+        $migration = require database_path('migrations/2026_11_22_100000_link_consumable_stock_to_native_locations.php');
+        $migration->up();
+        $this->assertEquals($this->location->id, $first->fresh()->location_id);
+        $this->assertNotEquals($first->fresh()->location_id, $second->fresh()->location_id);
+        $this->assertSame('Second stock', $second->fresh()->location->name);
+        $this->assertDatabaseCount('consumable_stock_places', 2);
+        $migration->up();
+        $this->assertDatabaseCount('locations', 2);
     }
 
     public function test_native_and_legacy_ids_cannot_be_mixed(): void

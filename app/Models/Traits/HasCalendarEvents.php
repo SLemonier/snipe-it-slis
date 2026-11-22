@@ -157,7 +157,8 @@ trait HasCalendarEvents
         // the matching rows when the source was soft-deleted, and the
         // restored observer re-syncs on restore, so leaving this
         // branch dark on trashed() is safe. See issue #19760.
-        if (method_exists($this, 'trashed') && $this->trashed()) {
+        if (in_array(SoftDeletes::class, class_uses_recursive($this), true)
+            && $this->getAttribute(defined(static::class.'::DELETED_AT') ? constant(static::class.'::DELETED_AT') : 'deleted_at') !== null) {
             return;
         }
 
