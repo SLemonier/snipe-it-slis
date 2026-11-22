@@ -9,12 +9,23 @@ use App\Models\AccessoryCheckout;
 use App\Models\Location;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 
 class LocationsTransformer
 {
     public function transformLocations(Collection $locations, $total)
     {
+        if ($locations->isNotEmpty()) {
+            if (Schema::hasTable('consumable_stock_places')) {
+                $locations->loadExists('stockPlaces');
+            } else {
+                foreach ($locations as $location) {
+                    $location->setAttribute('stock_places_exists', false);
+                }
+            }
+        }
+
         $array = [];
         foreach ($locations as $location) {
             $array[] = self::transformLocation($location);

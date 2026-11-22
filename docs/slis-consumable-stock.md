@@ -14,7 +14,7 @@ Le filtre par emplacement inclut ses descendants et compte chaque unité une seu
 
 ## Conservation des données et compatibilité
 
-La migration propre au module ajoute uniquement les tables `consumable_stock_*`. Elle ne modifie aucune table ni ligne existante.
+La migration initiale du module ajoute les tables `consumable_stock_*`. Les migrations d’intégration ultérieures relient les emplacements historiques aux lieux natifs et indexent les péremptions dans le calendrier, sans supprimer les quantités ni les historiques.
 Lors d’une nouvelle installation, le module est désactivé ; chaque produit s’active volontairement.
 Lors d’une mise à niveau depuis notre 8.1.18, les réglages, activations et tables existants sont conservés. La migration du module garde son identité et ne se rejoue pas.
 Les migrations amont de recalcul de quantité excluent les produits suivis par lots : leur registre reste la source de vérité.
@@ -40,8 +40,8 @@ Désactiver le module fige ses mouvements et alertes. Cela ne supprime rien et n
 ## Utilisation
 
 1. Dans **Administration → Notifications**, activer le module. Régler le délai avant péremption (jours) et l’intervalle des rappels.
-2. Depuis une fiche consommable, ouvrir **Lots et stocks de consommables**, puis **Emplacements de stock**.
-3. Créer la réserve, les véhicules et les sacs. Ils peuvent être associés à un matériel ou à un lieu existant.
+2. Ouvrir **Stocks et péremptions** dans le menu latéral, ou **Lots et stocks de consommables** depuis une fiche consommable.
+3. Sélectionner les lieux natifs existants. Si nécessaire, créer les véhicules et sacs dans **Lieux**, puis définir leur lieu parent. Aucun catalogue supplémentaire ni type de lieu n’est requis.
 4. Pour chaque produit inventorié, activer le suivi avec son unité de comptage et indiquer si une péremption est obligatoire.
 5. Identifier le stock initial dans ses lots réels, puis le répartir par transfert. Reprendre séparément les anciennes distributions encore présentes.
 6. Enregistrer les réceptions, transferts/retours, utilisations, retraits et corrections dans la page de stock.
@@ -111,7 +111,7 @@ Les réponses utilisent l’enveloppe Snipe-IT : **toujours vérifier `status`**
 | minimum | to_place_id, quantity (0 désactive le minimum) |
 
 Les mouvements nécessitent le droit de lecture et le droit de sortie pour transfer/consume ; les autres actions exigent le droit de modification.
-Les emplacements sont administrés par les superutilisateurs. Le cloisonnement par société existant s’applique.
+Les lieux sont administrés avec les permissions natives de Snipe-IT. Les anciens endpoints de gestion des emplacements restent réservés aux superutilisateurs pour compatibilité. Le cloisonnement par société existant s’applique.
 
 ## Validation et déploiement
 
@@ -144,3 +144,13 @@ Après activation, **ne pas simplement remettre l’ancienne image** : elle igno
 Désactiver le module pour figer les écritures, conserver toutes les tables et utiliser une version corrigée comprenant le module.
 Un retour au fonctionnement ancien exige une réconciliation explicite et testée des mouvements effectués depuis la bascule.
 Ne pas restaurer le snapshot antérieur par-dessus les opérations nouvelles : cela les perdrait.
+
+## Native location and calendar integration
+
+The stock interface now selects the existing Snipe-IT Locations tree. There is no separate stock-location catalogue to maintain and no mandatory reserve/vehicle/bag classification. Create and move bags using native parent locations. The sidebar entry “Stocks and expirations” opens tracked stock; native location pages link to their contained stock.
+
+The additive location migration preserves ledger IDs, balances, operations and movement history. Existing explicit location links are retained. Unlinked places reuse an unambiguous native location with the same name, company and mapped parent, or create one. Duplicate legacy links receive distinct locations rather than merging stock silently. Review the resulting hierarchy on a production copy before deployment. Existing native location records are not renamed or reparented by this migration. Rollback does not delete the new native records or ledger links.
+
+API clients may keep using `from_place_id` / `to_place_id`. New clients can send `from_location_id` / `to_location_id` with native Snipe-IT location IDs. Do not send both identifiers for one direction. A stock-place ID is not a location ID. Native location selection and posting use `canCheckoutTo` and native visibility rules. A location linked to a ledger cannot be deleted or moved to a different effective company; moving a bag within its company preserves its stock and history.
+
+Consumable records show upcoming expiry, expired quantities and lots still present. Expiry remains per lot. The native calendar indexes dated lots and shows only identified lots with physical stock while the module is enabled, including quarantined lots; depleted lots disappear from results and counts. Existing dated lots are indexed by an additive migration. The calendar is informational; scheduled email alerts and their configurable lead time remain unchanged.

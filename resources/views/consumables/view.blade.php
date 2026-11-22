@@ -14,6 +14,9 @@
 
 {{-- Page content --}}
 @section('content')
+@if($consumable->usesStockLots())
+    @include('consumables.stock.expiry-summary')
+@endif
 @if (\Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products')
     && (\App\Models\ConsumableStockSetting::current()->enabled || $consumable->usesStockLots()))
     <div class="alert alert-info">

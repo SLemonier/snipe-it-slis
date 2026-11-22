@@ -1,8 +1,13 @@
 <?php
 
 return [
+    'activation_steps' => 'Step 1: choose the location of the existing stock and activate tracking. Step 2: identify opening stock to enter each lot and its expiry date. The note is not an expiry date.',
+    'no_locations' => 'No compatible Snipe-IT location is available. Check location access and company settings, or create a location.',
+    'calendar_expiry' => 'Consumable lot expires',
+    'next_expiry' => 'Next expiry',
+    'menu' => 'Stock and expirations',
     'all_places' => 'All locations',
-    'includes_children' => 'The filter includes bags inside this location. Each unit is counted once.',
+    'includes_children' => 'The filter includes all child locations. Each unit is counted once.',
     'title' => 'Consumable lots and stock',
     'places' => 'Stock locations',
     'place' => 'Location',
@@ -82,6 +87,9 @@ return [
         'bag' => 'Bag',
     ],
     'errors' => [
+        'location_history' => 'This location is linked to a stock ledger. Keep it to preserve inventory and movement history.',
+        'location_used' => 'This location is already linked to stock. Use its existing stock reference.',
+        'ambiguous_location' => 'Choose either a native location or a legacy stock place, not both.',
         'archived' => 'Unarchive this consumable before managing its lots.',
         'invalid_reference' => 'The requested reference does not exist or is not accessible.',
         'disabled' => 'The stock module is disabled.',
@@ -89,7 +97,7 @@ return [
         'already_enabled' => 'Lot tracking is already enabled.',
         'not_enabled' => 'Activate lot tracking first.',
         'legacy_changed' => 'The original stock or distribution count has changed outside the lot ledger. Operations are blocked pending reconciliation; no data has been deleted.',
-        'company' => 'The product and location must belong to the same company.',
+        'company' => 'This location is not compatible with this product under the Snipe-IT company settings.',
         'place_company' => 'A stock location cannot change company. Create a separate location.',
         'cycle' => 'A location cannot contain itself or one of its parents.',
         'same_place' => 'Source and destination must be different.',

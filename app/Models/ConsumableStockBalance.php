@@ -24,6 +24,6 @@ class ConsumableStockBalance extends Model
     /** @return BelongsTo<ConsumableStockPlace, $this> */
     public function place(): BelongsTo
     {
-        return $this->belongsTo(ConsumableStockPlace::class, 'place_id');
+        return $this->belongsTo(ConsumableStockPlace::class, 'place_id')->withoutGlobalScopes();
     }
 }

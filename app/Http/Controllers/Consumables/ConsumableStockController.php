@@ -7,12 +7,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ConsumableStockPlaceRequest;
 use App\Http\Requests\ConsumableStockRequest;
 use App\Http\Transformers\ConsumableStockTransformer;
-use App\Models\Company;
 use App\Models\Consumable;
 use App\Models\ConsumableStockOperation;
 use App\Models\ConsumableStockPlace;
 use App\Models\ConsumableStockProduct;
 use App\Models\ConsumableStockSetting;
+use App\Models\Location;
 use App\Services\ConsumableStock;
 use Illuminate\Http\Request;
 
@@ -26,6 +26,7 @@ class ConsumableStockController extends Controller
             $query->where('name', 'like', '%'.$request->input('search').'%');
         }
         $places = ConsumableStockPlace::with('parent')->orderBy('name')->get();
+        $locations = Location::with('parent')->orderBy('name')->get();
         $placeIds = null;
         if ($request->filled('place_id')) {
             $selected = $places->firstWhere('id', (int) $request->input('place_id'));
@@ -43,6 +44,23 @@ class ConsumableStockController extends Controller
                 ->join('consumable_stock_lots as lots', 'lots.id', '=', 'balances.lot_id')
                 ->whereIn('balances.place_id', $placeIds)->where('balances.quantity', '>', 0)->select('lots.consumable_id'));
         }
+        if ($request->filled('location_id')) {
+            $selected = $locations->firstWhere('id', (int) $request->input('location_id'));
+            abort_unless($selected, 404);
+            $locationIds = [$selected->id];
+            do {
+                $before = count($locationIds);
+                foreach ($locations as $location) {
+                    if (in_array($location->parent_id, $locationIds, true) && ! in_array($location->id, $locationIds, true)) {
+                        $locationIds[] = $location->id;
+                    }
+                }
+            } while ($before !== count($locationIds));
+            $placeIds = ConsumableStockPlace::withoutGlobalScopes()->whereIn('location_id', $locationIds)->pluck('id')->all();
+            $query->whereIn('id', \Illuminate\Support\Facades\DB::table('consumable_stock_balances as balances')
+                ->join('consumable_stock_lots as lots', 'lots.id', '=', 'balances.lot_id')
+                ->whereIn('balances.place_id', $placeIds)->where('balances.quantity', '>', 0)->select('lots.consumable_id'));
+        }
         $items = $query->paginate(25);
         $summaries = [];
         foreach ($items as $item) {
@@ -56,7 +74,7 @@ class ConsumableStockController extends Controller
             $summaries[$item->id] = $summary;
         }
 
-        return view('consumables.stock.index', compact('items', 'summaries', 'places'));
+        return view('consumables.stock.index', compact('items', 'summaries', 'places', 'locations'));
     }
 
     public function show(Consumable $consumable, ConsumableStock $stock, Request $request)
@@ -78,10 +96,19 @@ class ConsumableStockController extends Controller
             ]));
         }
         $history = $historyQuery->paginate(30);
-        $places = ConsumableStockPlace::where('company_id', $consumable->company_id)->orderBy('name')->get();
+        $placeIds = collect($snapshot['balances'])->pluck('place_id')
+            ->merge(collect($snapshot['minimums'])->pluck('place_id'));
+        foreach ($history as $operation) {
+            $placeIds = $placeIds->merge($operation->movements->pluck('from_place_id'))
+                ->merge($operation->movements->pluck('to_place_id'));
+        }
+        $places = ConsumableStockPlace::withoutGlobalScopes()->whereIn('id', $placeIds->filter()->unique())
+            ->with('location.parent')->orderBy('name')->get();
+        $locations = Location::with('parent')->orderBy('name')->get()
+            ->filter(fn (Location $location) => $consumable->canCheckoutTo($location));
         $module = ConsumableStockSetting::current();
 
-        return view('consumables.stock.show', compact('consumable', 'snapshot', 'history', 'places', 'module'));
+        return view('consumables.stock.show', compact('consumable', 'snapshot', 'history', 'places', 'locations', 'module'));
     }
 
     public function store(Consumable $consumable, ConsumableStockRequest $request, ConsumableStock $stock)
@@ -103,9 +130,8 @@ class ConsumableStockController extends Controller
         if ($request->is('api/*')) {
             return response()->json(Helper::formatStandardApiResponse('success', $places->map(fn ($place) => (new ConsumableStockTransformer)->place($place))->all()));
         }
-        $companies = Company::orderBy('name')->get();
 
-        return view('consumables.stock.places', compact('places', 'companies'));
+        return redirect()->route('locations.index');
     }
 
     public function savePlace(ConsumableStockPlaceRequest $request, ConsumableStock $stock, ?ConsumableStockPlace $place = null)

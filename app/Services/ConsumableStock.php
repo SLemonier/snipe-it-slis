@@ -40,6 +40,21 @@ class ConsumableStock
                 return $existing;
             }
 
+            foreach (['from', 'to'] as $direction) {
+                if (! empty($data[$direction.'_location_id'])) {
+                    $this->check(empty($data[$direction.'_place_id']), 'ambiguous_location');
+                    $location = Location::whereKey($data[$direction.'_location_id'])->lockForUpdate()->first();
+                    $this->check($location !== null, 'invalid_reference');
+                    $this->check($locked->canCheckoutTo($location), 'company');
+                    $place = Place::withoutGlobalScopes()->where('location_id', $location->id)->lockForUpdate()->first();
+                    if (! $place) {
+                        $place = Place::create(['location_id' => $location->id,
+                            'name' => $location->name, 'kind' => 'reserve', 'company_id' => $location->company_id]);
+                    }
+                    $data[$direction.'_place_id'] = $place->id;
+                }
+            }
+
             $product = Product::find($locked->id);
             if ($action === 'enable') {
                 $this->check(! $product, 'already_enabled');
@@ -216,7 +231,27 @@ class ConsumableStock
                     $this->check(($linked->company_id === null ? null : (int) $linked->company_id) === $company, 'company');
                 }
             }
+            if ($parent && ! $parent->location_id) {
+                $this->linkLegacyParent($parent);
+            }
             $before = $place->exists ? $place->getAttributes() : null;
+            $data['kind'] ??= $place->kind ?? 'reserve';
+            $location = $place->location_id ? Location::whereKey($place->location_id)->lockForUpdate()->firstOrFail() : null;
+            if (! $location && ! empty($data['location_id'])) {
+                $location = Location::whereKey($data['location_id'])->lockForUpdate()->firstOrFail();
+                $this->check(Place::withoutGlobalScopes()->where('location_id', $location->id)->lockForUpdate()->first() === null, 'location_used');
+            } elseif (! $location) {
+                $location = new Location;
+            }
+            if (empty($data['location_id'])) {
+                $location->name = $data['name'];
+                $location->company_id = $company;
+                $location->parent_id = $parent?->location_id;
+                if (! $location->save()) {
+                    throw ValidationException::withMessages($location->getErrors()->toArray());
+                }
+            }
+            $data['location_id'] = $location->id;
             $place->fill($data)->save();
             DB::table('consumable_stock_place_events')->insert([
                 'place_id' => $place->id, 'actor_id' => auth()->id(),
@@ -232,7 +267,7 @@ class ConsumableStock
     {
         Gate::authorize('view', $item);
         $product = Product::find($item->id);
-        $lots = Lot::where('consumable_id', $item->id)->with(['balances.place.parent'])->orderByRaw('expires_on IS NULL')
+        $lots = Lot::where('consumable_id', $item->id)->with(['balances.place.parent', 'balances.place.location.parent'])->orderByRaw('expires_on IS NULL')
             ->orderBy('expires_on')->orderBy('id')->get();
         $physical = 0;
         $usable = 0;
@@ -249,6 +284,8 @@ class ConsumableStock
                     'lot_id' => $lot->id, 'number' => $lot->number,
                     'expires_on' => $lot->expires_on?->toDateString(),
                     'place_id' => $balance->place_id, 'place' => $balance->place?->displayPath(),
+                    'location_id' => $balance->place?->location?->id,
+                    'asset_id' => $balance->place?->asset_id,
                     'quantity' => $balance->quantity, 'usable' => $available,
                     'unidentified' => $lot->unidentified, 'quarantined' => $lot->quarantined,
                 ];
@@ -273,6 +310,26 @@ class ConsumableStock
         ];
     }
 
+    private function linkLegacyParent(Place $place): void
+    {
+        if ($place->location_id) {
+            return;
+        }
+        $parent = $place->parent;
+        if ($parent) {
+            $this->linkLegacyParent($parent);
+        }
+        $location = new Location;
+        $location->name = $place->name;
+        $location->company_id = $place->company_id;
+        $location->parent_id = $parent?->location_id;
+        if (! $location->save()) {
+            throw ValidationException::withMessages($location->getErrors()->toArray());
+        }
+        $place->location_id = $location->id;
+        $place->save();
+    }
+
     private function assignmentCount(Consumable $item): int
     {
         return DB::table('consumables_users')->where('consumable_id', $item->id)->count();
@@ -280,8 +337,15 @@ class ConsumableStock
 
     private function place(Consumable $item, int $id): Place
     {
-        $place = Place::find($id);
+        $place = Place::withoutGlobalScopes()->find($id);
         $this->check($place !== null, 'invalid_reference');
+        if ($place->location_id) {
+            $location = Location::whereKey($place->location_id)->lockForUpdate()->first();
+            $this->check($location !== null, 'invalid_reference');
+            $this->check($item->canCheckoutTo($location), 'company');
+
+            return $place;
+        }
         $this->check(Company::isCurrentUserHasAccess($place)
             && ($place->company_id === ($item->company_id === null ? null : (int) $item->company_id)), 'company');
 

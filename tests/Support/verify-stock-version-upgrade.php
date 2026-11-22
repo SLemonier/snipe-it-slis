@@ -91,13 +91,33 @@ if ($mode === 'seed') {
 $before = json_decode(file_get_contents($snapshotFile), true, flags: JSON_THROW_ON_ERROR);
 foreach ($before['tables'] as $table => $data) {
     $rows = DB::table($table)->select($data['columns'])->orderBy($data['order'])->get()->toJson();
-    if (json_decode($rows, true) !== $data['rows']) {
+    $actual = json_decode($rows, true);
+    $expected = $data['rows'];
+    if ($table === 'consumable_stock_places') {
+        foreach ($actual as &$row) {
+            if (! DB::table('locations')->where('id', $row['location_id'])->exists()) {
+                throw new RuntimeException('Missing native location for existing stock.');
+            }
+            unset($row['location_id']);
+        }
+        unset($row);
+        foreach ($expected as &$row) {
+            unset($row['location_id']);
+        }
+        unset($row);
+    }
+    if ($actual !== $expected) {
         throw new RuntimeException('Upgrade changed existing data: '.$table);
     }
 }
 Auth::loginUsingId($before['admin']);
 $item = Consumable::findOrFail($before['item']);
-if ($stock->snapshot($item) !== $before['stock']) {
+$upgradedStock = $stock->snapshot($item);
+foreach ($upgradedStock['balances'] as &$balance) {
+    unset($balance['location_id'], $balance['asset_id']);
+}
+unset($balance);
+if ($upgradedStock !== $before['stock']) {
     throw new RuntimeException('The lot ledger changed during the upgrade.');
 }
 if (Consumable::findOrFail($before['untracked'])->numRemaining() !== 17) {

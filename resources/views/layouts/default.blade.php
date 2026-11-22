@@ -590,12 +590,19 @@
                             </li>
                         @endcan
                         @can('view', \App\Models\Consumable::class)
-                            <li id="consumables-sidenav-option"{!! (request()->is('consumables*') ? ' class="active" aria-current="page"' : '') !!}>
+                            <li id="consumables-sidenav-option"{!! (request()->is('consumables*') && ! request()->routeIs('consumables.stock.*') ? ' class="active" aria-current="page"' : '') !!}>
                                 <a href="{{ url('consumables') }}">
                                     <x-icon type="consumables" class="fa-fw" />
                                     <span>{{ trans('general.consumables') }}</span>
                                 </a>
                             </li>
+                        @endcan
+                        @can('view', \App\Models\Consumable::class)
+                            @if(\Illuminate\Support\Facades\Schema::hasTable('consumable_stock_products') && (\App\Models\ConsumableStockSetting::current()->enabled || \App\Models\Consumable::whereIn('id', \App\Models\ConsumableStockProduct::select('consumable_id'))->exists()))
+                                <li id="consumable-stock-sidenav-option"{!! request()->routeIs('consumables.stock.*') ? ' class="active" aria-current="page"' : '' !!}>
+                                    <a href="{{ route('consumables.stock.index') }}"><x-icon type="consumables" class="fa-fw" /> <span>{{ trans('consumable_stock.menu') }}</span></a>
+                                </li>
+                            @endif
                         @endcan
                         @can('view', \App\Models\Component::class)
                             <li id="components-sidenav-option"{!! (request()->is('components*') ? ' class="active" aria-current="page"' : '') !!}>

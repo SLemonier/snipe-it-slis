@@ -4,7 +4,7 @@
 <div class="box box-default">
     <div class="box-header with-border">
         <h2 class="box-title">{{ trans('consumable_stock.title') }}</h2>
-        <div class="box-tools"><a href="{{ route('consumables.stock.places') }}">{{ trans('consumable_stock.places') }}</a></div>
+        <div class="box-tools"><a href="{{ route('locations.index') }}">{{ trans('consumable_stock.places') }}</a></div>
     </div>
     <div class="box-body">
         <p>{{ trans('consumable_stock.index_help') }}</p>
@@ -12,10 +12,10 @@
             <label for="stock-search">{{ trans('general.search') }}</label>
             <input class="form-control" id="stock-search" name="search" value="{{ request('search') }}">
             <label for="stock-place">{{ trans('consumable_stock.place') }}</label>
-            <select class="form-control" id="stock-place" name="place_id">
+            <select class="form-control select2" style="min-width:240px" id="stock-place" name="location_id">
                 <option value="">{{ trans('consumable_stock.all_places') }}</option>
-                @foreach($places as $place)
-                    <option value="{{ $place->id }}" @selected((string) request('place_id') === (string) $place->id)>{{ $place->displayPath() }}</option>
+                @foreach($locations as $location)
+                    <option value="{{ $location->id }}" @selected((string) request('location_id') === (string) $location->id)>{{ \App\Models\ConsumableStockPlace::locationPath($location) }}</option>
                 @endforeach
             </select>
             <button class="btn btn-default" type="submit">{{ trans('general.search') }}</button>

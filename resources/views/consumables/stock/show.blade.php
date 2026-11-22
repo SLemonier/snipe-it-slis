@@ -29,9 +29,18 @@
                     <tbody>
                     @forelse($snapshot['balances'] as $row)
                         <tr>
-                            <td>{{ $row['unidentified'] ? trans('consumable_stock.unidentified') : $row['number'] }}</td>
+                            <td id="stock-lot-{{ $row['lot_id'] }}">{{ $row['unidentified'] ? trans('consumable_stock.unidentified') : $row['number'] }}</td>
                             <td>{{ $row['expires_on'] ?? ($snapshot['expiry_required'] ? trans('consumable_stock.unknown') : trans('consumable_stock.no_expiry')) }}</td>
-                            <td>{{ $row['place'] }}</td><td>{{ $row['quantity'] }}</td>
+                            <td>
+                                @if($row['location_id'])
+                                    <a href="{{ route('locations.show', $row['location_id']) }}">{{ $row['place'] }}</a>
+                                @else {{ $row['place'] }} @endif
+                                @if($row['asset_id'])
+                                    @can('view', \App\Models\Asset::class)
+                                        <a href="{{ route('hardware.show', $row['asset_id']) }}"><x-icon type="assets" /> {{ trans('general.asset') }}</a>
+                                    @endcan
+                                @endif
+                            </td><td>{{ $row['quantity'] }}</td>
                             <td><span class="label label-{{ $row['usable'] ? 'success' : 'warning' }}">{{ trans('consumable_stock.'.($row['usable'] ? 'usable' : ($row['quarantined'] ? 'quarantined' : 'unavailable'))) }}</span></td>
                         </tr>
                     @empty
@@ -52,13 +61,23 @@
 
         @if($module->enabled && $snapshot['consistent'])
             @if(auth()->user()->can('update', $consumable) || ($snapshot['enabled'] && auth()->user()->can('checkout', $consumable)))
+                @if($locations->isEmpty())
+                    <div class="alert alert-warning">{{ trans('consumable_stock.no_locations') }}
+                        @can('create', \App\Models\Location::class)
+                            <a href="{{ route('locations.create') }}">{{ trans('general.create') }}</a>
+                        @endcan
+                    </div>
+                @endif
+                @if(!$snapshot['enabled'])
+                    <p class="help-block">{{ trans('consumable_stock.activation_steps') }}</p>
+                @endif
                 <h3>{{ trans('consumable_stock.record') }}</h3>
                 <form method="POST" action="{{ route('consumables.stock.store', $consumable) }}" id="stock-movement-form">
                     @csrf
                     <input type="hidden" name="operation_id" value="{{ old('operation_id', (string) \Illuminate\Support\Str::uuid()) }}">
                     <div class="form-group">
                         <label for="stock-action">{{ trans('consumable_stock.action') }}</label>
-                        <select class="form-control" name="action" id="stock-action">
+                        <select class="form-control select2" style="width:100%" name="action" id="stock-action">
                             @if(!$snapshot['enabled'])
                                 <option value="enable">{{ trans('consumable_stock.actions.enable') }}</option>
                             @else
@@ -79,17 +98,17 @@
                     @foreach(['from' => 'identify transfer consume withdraw adjust', 'to' => 'enable receive transfer adjust minimum'] as $direction => $actions)
                         <div class="form-group stock-field" data-actions="{{ $actions }}">
                             <label for="stock-{{ $direction }}">{{ trans('consumable_stock.'.$direction) }}</label>
-                            <select class="form-control" name="{{ $direction }}_place_id" id="stock-{{ $direction }}">
+                            <select class="form-control select2" style="width:100%" name="{{ $direction }}_location_id" id="stock-{{ $direction }}">
                                 <option value="">{{ trans('consumable_stock.choose') }}</option>
-                                @foreach($places as $place)
-                                    <option value="{{ $place->id }}" @selected((string) old($direction.'_place_id') === (string) $place->id)>{{ $place->displayPath() }}</option>
+                                @foreach($locations as $location)
+                                    <option value="{{ $location->id }}" @selected((string) old($direction.'_location_id') === (string) $location->id)>{{ \App\Models\ConsumableStockPlace::locationPath($location) }}</option>
                                 @endforeach
                             </select>
                         </div>
                     @endforeach
                     <div class="form-group stock-field" data-actions="identify transfer consume withdraw adjust quarantine amend_lot">
                         <label for="stock-lot">{{ trans('consumable_stock.lot') }}</label>
-                        <select class="form-control" name="lot_id" id="stock-lot">
+                        <select class="form-control select2" style="width:100%" name="lot_id" id="stock-lot">
                             <option value="">{{ trans('consumable_stock.fefo') }}</option>
                             @foreach(collect($snapshot['balances'])->unique('lot_id') as $row)
                                 <option value="{{ $row['lot_id'] }}" @selected((string) old('lot_id') === (string) $row['lot_id'])>{{ $row['unidentified'] ? trans('consumable_stock.unidentified') : $row['number'] }} — {{ $row['expires_on'] ?? trans('consumable_stock.unknown') }}</option>
@@ -129,7 +148,7 @@
                 </form>
             @endif
         @endif
-        <p><a href="{{ route('consumables.stock.places') }}">{{ trans('consumable_stock.places') }}</a> · <a href="{{ route('consumables.show', $consumable) }}">{{ trans('consumable_stock.legacy_record') }}</a></p>
+        <p><a href="{{ route('locations.index') }}">{{ trans('consumable_stock.places') }}</a> · <a href="{{ route('consumables.show', $consumable) }}">{{ trans('consumable_stock.legacy_record') }}</a></p>
         <h3>{{ trans('consumable_stock.history') }}</h3>
         <table class="table table-striped">
             <thead><tr><th>{{ trans('general.date') }}</th><th>{{ trans('consumable_stock.action') }}</th><th>{{ trans('general.user') }}</th><th>{{ trans('consumable_stock.note') }}</th><th>{{ trans('consumable_stock.details') }}</th></tr></thead>
@@ -137,8 +156,8 @@
                 <tr><td>{{ $operation->created_at }}</td><td>{{ trans('consumable_stock.actions.'.$operation->action) }}</td><td>{{ $operation->actor?->present()->fullName }}</td><td>{{ $operation->note }}</td>
                     <td>@foreach($operation->movements as $movement)
                         <div>{{ $movement->lot?->number }}: {{ $movement->quantity }} {{ $snapshot['unit'] }}
-                            {{ $places->firstWhere('id', $movement->from_place_id)?->name }}
-                            → {{ $places->firstWhere('id', $movement->to_place_id)?->name }}
+                            {{ $places->firstWhere('id', $movement->from_place_id)?->displayPath() }}
+                            → {{ $places->firstWhere('id', $movement->to_place_id)?->displayPath() }}
                         </div>
                     @endforeach
                     @if($operation->action === 'amend_lot')
@@ -149,7 +168,7 @@
                             {{ trans('general.'.($operation->details['previous_quarantined'] ? 'yes' : 'no')) }}
                             → {{ trans('general.'.($operation->details['quarantined'] ? 'yes' : 'no')) }}</div>
                     @elseif($operation->action === 'minimum')
-                        <div>{{ $places->firstWhere('id', $operation->details['to_place_id'])?->name }}:
+                        <div>{{ $places->firstWhere('id', $operation->details['to_place_id'])?->displayPath() }}:
                             {{ trans('consumable_stock.minimum') }} {{ $operation->details['quantity'] }} {{ $snapshot['unit'] }}</div>
                     @endif
                     @if(!empty($operation->details['reference']))
@@ -166,7 +185,7 @@
 </div>
 @stop
 @section('moar_scripts')
-<script>
+<script nonce="{{ csrf_token() }}">
 (function () {
     var form = document.getElementById('stock-movement-form');
     if (!form) return;
@@ -195,7 +214,7 @@
             var left = Number(quantity.value);
             var picked = [];
             balances.filter(function (row) {
-                return row.usable && String(row.place_id) === source.value && (!lot.value || String(row.lot_id) === lot.value);
+                return row.usable && String(row.location_id) === source.value && (!lot.value || String(row.lot_id) === lot.value);
             }).forEach(function (row) {
                 var count = Math.min(left, row.quantity);
                 if (count > 0) picked.push(row.number + ': ' + count);
@@ -207,6 +226,7 @@
     }
     form.addEventListener('input', refresh);
     form.addEventListener('change', refresh);
+    $(form).on('change', 'select', refresh);
     form.addEventListener('submit', function () { form.querySelector('[type=submit]').disabled = true; });
     refresh();
 })();

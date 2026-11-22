@@ -133,6 +133,29 @@ class Location extends SnipeModel
      */
     protected static function booted(): void
     {
+        static::updating(function (self $location) {
+            if (! $location->isDirty(['company_id', 'parent_id']) || ! \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_places')) {
+                return;
+            }
+            $original = self::withoutGlobalScopes()->find($location->id);
+            if ($original->effectiveFmcsCompanyId() === $location->effectiveFmcsCompanyId()) {
+                return;
+            }
+            $ids = [$location->id];
+            $frontier = $ids;
+            while ($frontier !== []) {
+                $frontier = self::withoutGlobalScopes()->whereIn('parent_id', $frontier)->whereNotIn('id', $ids)->pluck('id')->all();
+                $ids = array_merge($ids, $frontier);
+            }
+            if (ConsumableStockPlace::withoutGlobalScopes()->whereIn('location_id', $ids)->exists()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['company_id' => trans('consumable_stock.errors.place_company')]);
+            }
+        });
+        static::deleting(function (self $location) {
+            if ($location->hasStockLedger()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['location' => trans('consumable_stock.errors.location_history')]);
+            }
+        });
         static::forceDeleted(function (self $location) {
             if ($location->image) {
                 try {
@@ -155,6 +178,17 @@ class Location extends SnipeModel
         });
     }
 
+    public function stockPlaces(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(ConsumableStockPlace::class, 'location_id')->withoutGlobalScopes();
+    }
+
+    public function hasStockLedger(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_places')
+            && ConsumableStockPlace::withoutGlobalScopes()->where('location_id', $this->id)->exists();
+    }
+
     /**
      * Determine whether or not this location can be deleted.
      *
@@ -164,13 +198,12 @@ class Location extends SnipeModel
      * @author A. Gianotto <snipe@snipe.net>
      *
      * @since  [v3.0]
-     *
-     * @return bool
      */
     public function isDeletable()
     {
         return Gate::allows('delete', $this)
             && ($this->deleted_at == '')
+            && ! ($this->stock_places_exists ?? $this->hasStockLedger())
             && (($this->assets_count ?? $this->assets()->count()) === 0)
             && (($this->assigned_assets_count ?? $this->assignedAssets()->count()) === 0)
             && (($this->accessories_count ?? $this->accessories()->count()) === 0)

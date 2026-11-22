@@ -41,7 +41,7 @@ class StockHttpTest extends TestCase
             ->assertSessionHasNoErrors()->assertRedirect(route('consumables.stock.show', $this->item));
         $this->get(route('consumables.stock.show', $this->item))->assertOk()->assertSee('Initial inventory');
         $this->get(route('consumables.stock.index'))->assertOk();
-        $this->get(route('consumables.stock.places'))->assertOk();
+        $this->get(route('consumables.stock.places'))->assertRedirect(route('locations.index'));
         $this->get(route('settings.alerts.index'))->assertOk();
     }
 

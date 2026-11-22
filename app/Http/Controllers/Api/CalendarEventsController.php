@@ -83,7 +83,20 @@ class CalendarEventsController extends Controller
         // the SQL filter can't express (per-location scoping on top of
         // FMCS, soft-deleted sources, etc.).
         $baseQuery = $this->buildBaseQuery($rangeStart, $rangeEnd, $eventTypes)
-            ->whereIn('source_type', $viewableSourceTypes);
+            ->whereIn('source_type', $viewableSourceTypes)
+            ->where(function ($query) {
+                $query->where('source_type', '!=', \App\Models\ConsumableStockLot::class);
+                if (\App\Models\ConsumableStockSetting::current()->enabled) {
+                    $query->orWhere(function ($lots) {
+                        $lots->where('source_type', \App\Models\ConsumableStockLot::class)
+                            ->whereIn('source_id', \App\Models\ConsumableStockLot::query()
+                                ->where('unidentified', false)
+                                ->whereHas('consumable')
+                                ->whereHas('balances', fn ($balances) => $balances->where('quantity', '>', 0))
+                                ->select('id'));
+                    });
+                }
+            });
         $total = (clone $baseQuery)->count();
         $rows = $baseQuery->orderBy('start')->limit($limit)->get();
 

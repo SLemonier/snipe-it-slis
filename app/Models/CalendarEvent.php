@@ -76,7 +76,7 @@ class CalendarEvent extends Model
     {
         static $cache = null;
         if ($cache !== null) {
-            return $cache;
+            return self::installedSources($cache);
         }
 
         $sources = [];
@@ -98,6 +98,20 @@ class CalendarEvent extends Model
             }
         }
 
-        return $cache = $sources;
+        $cache = $sources;
+
+        return self::installedSources($cache);
+    }
+
+    /** @param array<int, class-string> $sources
+     * @return array<int, class-string>
+     */
+    private static function installedSources(array $sources): array
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('consumable_stock_lots')) {
+            return array_values(array_diff($sources, [ConsumableStockLot::class]));
+        }
+
+        return $sources;
     }
 }
